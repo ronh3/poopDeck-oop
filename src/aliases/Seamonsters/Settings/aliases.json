@@ -1,0 +1,30 @@
+[
+       {
+              "name": "Auto Mode Toggle",
+              "isActive": "yes",
+              "regex": "^autosea\\s?(on|off)$",
+              "script": "",
+              "isFolder": "no"
+       },
+       {
+              "name": "Set Health",
+              "isActive": "yes",
+              "regex": "^poophp (\\d+)$",
+              "script": "",
+              "isFolder": "no"
+       },
+       {
+              "name": "Set Maintain",
+              "isActive": "yes",
+              "regex": "^maint\\s?(\\S+)$",
+              "script": "",
+              "isFolder": "no"
+       },
+       {
+              "name": "Set Weapon",
+              "isActive": "yes",
+              "regex": "^seaweapon\\s?(\\S+)$",
+              "script": "",
+              "isFolder": "no"
+       }
+]
