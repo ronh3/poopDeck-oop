@@ -1,11 +1,8 @@
 -- poopDeck OOP Initialization Module
 -- This script initializes all classes and wires them together
 
--- Import all class modules
-local Display = require("poopDeck.Classes.Display")
-local Config = require("poopDeck.Classes.Config")
-local Ship = require("poopDeck.Classes.Ship")
-local SeamonsterCombat = require("poopDeck.Classes.SeamonsterCombat")
+-- In Mudlet, classes are loaded as global scripts, not modules
+-- So we don't need require() statements - the classes are already available
 
 -- Initialize poopDeck namespace if it doesn't exist
 poopDeck = poopDeck or {}
@@ -13,17 +10,24 @@ poopDeck.version = "2.0-OOP"
 
 -- Initialize function called on package load
 function poopDeck.initialize()
+    -- Check if classes are available
+    if not poopDeck.Config then
+        echo("poopDeck: Classes not loaded yet, retrying in 1 second...\n")
+        tempTimer(1, poopDeck.initialize)
+        return
+    end
+    
     -- Create config instance first (other classes may depend on it)
-    poopDeck.config = Config:new()
+    poopDeck.config = poopDeck.Config:new()
     
     -- Create display instance
-    poopDeck.display = Display:new(poopDeck.config)
+    poopDeck.display = poopDeck.Display:new(poopDeck.config)
     
     -- Create ship instance
-    poopDeck.ship = Ship:new(poopDeck.config)
+    poopDeck.ship = poopDeck.Ship:new(poopDeck.config)
     
     -- Create combat instance (needs config and ship references)
-    poopDeck.combat = SeamonsterCombat:new(poopDeck.config, poopDeck.ship)
+    poopDeck.combat = poopDeck.SeamonsterCombat:new(poopDeck.config, poopDeck.ship)
     
     -- Set up any saved configuration
     if poopDeck.config:get("selectedWeapon") then
@@ -178,7 +182,31 @@ end
 registerAnonymousEventHandler("sysLoadEvent", poopDeck.initialize)
 registerAnonymousEventHandler("sysExitEvent", poopDeck.shutdown)
 
--- Also allow manual initialization
-if poopDeck.manualInit then
+-- Immediate initialization attempt (safer than waiting for sysLoadEvent)
+poopDeck.initialize()
+
+-- Also provide manual initialization command
+function poopDeck.init()
     poopDeck.initialize()
+end
+
+-- Debug function to check system state
+function poopDeck.debug()
+    local debug = {
+        namespace = poopDeck and "exists" or "missing",
+        classes = {
+            Config = poopDeck.Config and "loaded" or "missing",
+            Display = poopDeck.Display and "loaded" or "missing", 
+            Ship = poopDeck.Ship and "loaded" or "missing",
+            SeamonsterCombat = poopDeck.SeamonsterCombat and "loaded" or "missing"
+        },
+        instances = {
+            config = poopDeck.config and "initialized" or "not initialized",
+            display = poopDeck.display and "initialized" or "not initialized",
+            ship = poopDeck.ship and "initialized" or "not initialized", 
+            combat = poopDeck.combat and "initialized" or "not initialized"
+        }
+    }
+    display(debug)
+    return debug
 end
