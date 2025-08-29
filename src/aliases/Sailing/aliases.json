@@ -126,6 +126,13 @@
               "isFolder": "no"
        },
        {
+              "name": "Ship Status",
+              "isActive": "yes",
+              "regex": "^ship status$",
+              "script": "",
+              "isFolder": "no"
+       },
+       {
               "name": "Wavecall",
               "isActive": "yes",
               "regex": "^wav\\s?(\\w+)\\s?([12345678])$",
