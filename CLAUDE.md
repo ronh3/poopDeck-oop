@@ -23,12 +23,18 @@
 -- THIS DOESN'T WORK IN MUDLET
 local Display = require("poopDeck.Classes.Display")
 local Config = require("poopDeck.Classes.Config")
+
+-- ALSO WRONG: Using return at end of class file
+return Display  -- DON'T DO THIS
 ```
 
 #### Correct Approach:
 ```lua
--- Classes are loaded globally by Muddler/Mudlet
--- Access via namespace: poopDeck.ClassName
+-- In each class file, export to namespace:
+poopDeck = poopDeck or {}
+poopDeck.Display = Display
+
+-- Then in Init.lua, access via namespace:
 poopDeck.config = poopDeck.Config:new()
 poopDeck.display = poopDeck.Display:new(poopDeck.config)
 ```

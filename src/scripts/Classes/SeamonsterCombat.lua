@@ -477,5 +477,6 @@ function SeamonsterCombat:getCurrentMonster()
     return self.state.currentMonster
 end
 
--- Export the class
-return SeamonsterCombat
+-- Export the class to poopDeck namespace for Mudlet
+poopDeck = poopDeck or {}
+poopDeck.SeamonsterCombat = SeamonsterCombat

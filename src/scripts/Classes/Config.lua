@@ -208,5 +208,6 @@ function Config:setWeapon(weapon)
     return self
 end
 
--- Export the class
-return Config
+-- Export the class to poopDeck namespace for Mudlet
+poopDeck = poopDeck or {}
+poopDeck.Config = Config

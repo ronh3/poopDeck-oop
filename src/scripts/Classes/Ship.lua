@@ -726,5 +726,6 @@ function Ship:chain()
     return chain
 end
 
--- Export the class
-return Ship
+-- Export the class to poopDeck namespace for Mudlet
+poopDeck = poopDeck or {}
+poopDeck.Ship = Ship

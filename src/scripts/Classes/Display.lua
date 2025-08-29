@@ -202,5 +202,6 @@ function Display:promptLine(text, colorType)
     hecho(line)
 end
 
--- Export the class
-return Display
+-- Export the class to poopDeck namespace for Mudlet
+poopDeck = poopDeck or {}
+poopDeck.Display = Display
