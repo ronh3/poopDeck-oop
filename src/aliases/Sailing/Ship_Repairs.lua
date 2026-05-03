@@ -1,1 +1,1 @@
-poopDeck.command('shipRepairs')
+poopDeck.sailing.repairAll()

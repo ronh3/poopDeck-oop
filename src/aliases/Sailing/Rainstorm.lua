@@ -1,1 +1,1 @@
-poopDeck.command('rainstorm')
+poopDeck.sailing.rainstorm()

@@ -1,1 +1,1 @@
-poopDeck.command('clearRigging')
+poopDeck.sailing.clearRigging()

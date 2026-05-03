@@ -1,1 +1,1 @@
-poopDeck.command('chop')
+poopDeck.sailing.chop()

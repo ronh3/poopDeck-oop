@@ -1,1 +1,1 @@
-poopDeck.command('shipWarning', matches[2])
+poopDeck.sailing.shipWarning(matches[2])

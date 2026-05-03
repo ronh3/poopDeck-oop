@@ -1,1 +1,1 @@
-poopDeck.setMaintain(matches[2])
+poopDeck.combat.setMaintain(matches[2])

@@ -1,1 +1,1 @@
-poopDeck.monsterStarshot()
+poopDeck.combat.onStarshot()

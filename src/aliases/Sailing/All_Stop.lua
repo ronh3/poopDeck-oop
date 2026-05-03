@@ -1,1 +1,1 @@
-poopDeck.command('allStop')
+poopDeck.sailing.allStop()

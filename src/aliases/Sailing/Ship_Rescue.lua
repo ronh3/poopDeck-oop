@@ -1,1 +1,1 @@
-poopDeck.command('shipRescue')
+poopDeck.sailing.rescue()

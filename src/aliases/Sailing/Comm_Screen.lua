@@ -1,1 +1,1 @@
-poopDeck.command('commScreen', matches[2])
+poopDeck.sailing.commScreen(matches[2])

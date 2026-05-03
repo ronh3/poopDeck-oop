@@ -1,1 +1,20 @@
-null
+[
+  {
+    "name": "Fishing",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  },
+  {
+    "name": "Sailing",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  },
+  {
+    "name": "Seamonsters",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  }
+]

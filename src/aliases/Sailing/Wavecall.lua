@@ -1,1 +1,1 @@
-poopDeck.wavecall(matches[2], matches[3])
+poopDeck.sailing.wavecall(matches[2], matches[3])

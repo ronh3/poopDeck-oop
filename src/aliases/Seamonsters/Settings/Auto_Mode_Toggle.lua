@@ -1,1 +1,1 @@
-poopDeck.setSeamonsterAutoFire(matches[2])
+poopDeck.combat.setAutoMode(matches[2])

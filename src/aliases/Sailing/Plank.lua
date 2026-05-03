@@ -1,1 +1,1 @@
-poopDeck.command('plank', matches[2])
+poopDeck.sailing.plank(matches[2])

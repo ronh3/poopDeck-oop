@@ -1,2 +1,1 @@
-deleteLine()
-poopDeck.smallGoodEcho("Hooked " .. matches[2] .. " fish!")
+poopDeck.fishing.showSize(matches[2])

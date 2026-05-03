@@ -1,1 +1,1 @@
-poopDeck.ClearedRigging()
+poopDeck.sailing.onRiggingCleared()

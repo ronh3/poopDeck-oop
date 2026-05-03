@@ -1,1 +1,1 @@
-poopDeck.createHelp(poopDeck.helpSailing)
+poopDeck.help.showSection("sailing")

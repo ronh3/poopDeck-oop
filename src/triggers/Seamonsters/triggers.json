@@ -1,1 +1,14 @@
-null
+[
+  {
+    "name": "Seamonster Tracking",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  },
+  {
+    "name": "Weaponry",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  }
+]

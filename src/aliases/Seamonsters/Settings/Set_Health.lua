@@ -1,1 +1,1 @@
-poopDeck.setHealth(matches[2])
+poopDeck.combat.setHealth(matches[2])

@@ -1,1 +1,1 @@
-poopDeck.command('maintain', matches[2])
+poopDeck.sailing.maintain(matches[2])

@@ -1,1 +1,1 @@
-poopDeck.seaFiring()
+poopDeck.combat.onFiringStarted()

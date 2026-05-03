@@ -1,1 +1,1 @@
-poopDeck.autoFire()
+poopDeck.combat.onShipMoved()

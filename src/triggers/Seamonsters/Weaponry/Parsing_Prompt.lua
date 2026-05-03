@@ -1,1 +1,1 @@
-poopDeck.parsePrompt()
+poopDeck.combat.promptOverlay()

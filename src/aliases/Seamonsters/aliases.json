@@ -1,8 +1,14 @@
 [
-       {
-              "name": "Settings",
-              "isActive": "yes",
-              "script": "",
-              "isFolder": "yes"
-       }
+  {
+    "name": "Settings",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  },
+  {
+    "name": "Manual Commands",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  }
 ]

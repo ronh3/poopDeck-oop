@@ -1,1 +1,1 @@
-poopDeck.command('rowOars')
+poopDeck.sailing.row()

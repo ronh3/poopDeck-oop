@@ -1,1 +1,1 @@
-poopDeck.command('windboost')
+poopDeck.sailing.windboost()

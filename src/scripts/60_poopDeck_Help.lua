@@ -1,0 +1,81 @@
+poopDeck = poopDeck or {}
+poopDeck.help = poopDeck.help or {}
+
+local help = poopDeck.help
+
+help.sections = {
+  sailing = {
+    title = "Sailing",
+    rows = {
+      "sstop - all stop",
+      "scast - cast off",
+      "sss <full|furl|relax|strike|0-100> - set sails",
+      "stt <heading> - turn ship",
+      "dock <dir> - dock ship",
+      "wav <dir> <1-8> - wavecall",
+      "lanc/ranc - lower/raise anchor",
+      "lpla/rpla - lower/raise plank",
+      "scomm on|off - commscreen",
+      "mainh/mains/mainn - maintain hull/sails/none",
+      "crig - clear rigging",
+      "dour/doum/dous - douse room/me/sails"
+    }
+  },
+  seamonsters = {
+    title = "Seamonsters",
+    rows = {
+      "seaweapon <ballista|onager|thrower> - select auto weapon",
+      "autosea on|off - toggle automatic fire",
+      "seastop - stop seamonster firing and clear range state",
+      "poophp <percent> - minimum health for firing",
+      "firb - ballista dart",
+      "firf or firbf - ballista flare",
+      "firo - alternating onager shot",
+      "firsp/first/firc - onager spider/star/chain",
+      "fird - thrower disc"
+    }
+  }
+}
+
+function help.showSection(name)
+  local section = help.sections[name]
+  if not section then
+    help.showSplash()
+    return
+  end
+  poopDeck.output.status(section.title, section.rows)
+end
+
+function help.showSplash()
+  poopDeck.output.status("poopDeck " .. poopDeck.version, {
+    "poopsail - sailing commands",
+    "poopmonster - seamonster commands",
+    "poopfull - all commands",
+    "ship status - current tracked ship/combat state"
+  })
+end
+
+function help.showFull()
+  help.showSplash()
+  help.showSection("sailing")
+  help.showSection("seamonsters")
+end
+
+function help.shipStatus()
+  local ship = poopDeck.state.ship or {}
+  local combat = poopDeck.state.combat or {}
+  poopDeck.output.status("Ship Status", {
+    "heading: " .. tostring(ship.currentHeading or "unknown"),
+    "speed: " .. tostring(ship.currentSpeed or "unknown") .. " actual: " .. tostring(ship.actualSpeed or "unknown"),
+    "hull: " .. tostring(ship.hullHealth or "unknown") .. " sails: " .. tostring(ship.sailHealth or "unknown"),
+    "wind: " .. tostring(ship.windDirection or "unknown") .. "@" .. tostring(ship.windSpeed or "unknown"),
+    "sea: " .. tostring(ship.seaCondition or "unknown"),
+    "rowing: " .. poopDeck.boolText(ship.isRowing),
+    "combat mode: " .. tostring(combat.mode or "manual"),
+    "active: " .. poopDeck.boolText(combat.active),
+    "fire pending: " .. poopDeck.boolText(combat.firePending),
+    "weapon: " .. tostring(combat.selectedWeapon or poopDeck.config.get("selectedWeapon") or "none"),
+    "firing: " .. poopDeck.boolText(combat.firing),
+    "out of range: " .. poopDeck.boolText(combat.outOfRange)
+  })
+end

@@ -1,1 +1,1 @@
-poopDeck.monsterSpidershot()
+poopDeck.combat.onSpidershot()

@@ -1,1 +1,1 @@
-poopDeck.command('anchor', matches[2])
+poopDeck.sailing.anchor(matches[2])

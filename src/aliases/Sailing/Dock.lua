@@ -1,1 +1,1 @@
-poopDeck.dock(matches[2])
+poopDeck.sailing.dock(matches[2])

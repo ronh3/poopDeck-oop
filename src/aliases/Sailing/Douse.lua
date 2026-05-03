@@ -1,1 +1,1 @@
-poopDeck.command('douse', matches[2])
+poopDeck.sailing.douse(matches[2])

@@ -1,2 +1,1 @@
-send("reel line")
-deleteLine()
+poopDeck.fishing.reel()

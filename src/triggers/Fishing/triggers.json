@@ -1,94 +1,108 @@
 [
-       {
-              "name": "Line Teaser",
-              "isActive": "yes",
-              "isFolder": "no",
-              "multiline": "no",
-              "multilineDelta": "0",
-              "matchall": "no",
-              "filter": "no",
-              "fireLength": "0",
-              "highlight": "no",
-              "highlightFG": "#ff0000",
-              "highlightBG": "#ffff00",
-              "patterns": [
-                     {
-                            "pattern": "You feel a fish nibbling on your hook.",
-                            "type": "exactMatch"
-                     },
-                     {
-                            "pattern": "You see the water ripple as a fish makes a medium strike at your bait.",
-                            "type": "exactMatch"
-                     },
-                     {
-                            "pattern": "You feel a fish make a small strike at your bait.",
-                            "type": "exactMatch"
-                     }
-              ],
-              "script": ""
-       },
-       {
-              "name": "Jerk the Pole",
-              "isActive": "yes",
-              "isFolder": "no",
-              "multiline": "no",
-              "multilineDelta": "0",
-              "matchall": "no",
-              "filter": "no",
-              "fireLength": "0",
-              "highlight": "no",
-              "highlightFG": "#ff0000",
-              "highlightBG": "#ffff00",
-              "patterns": [
-                     {
-                            "pattern": "You stagger as a fish makes a large strike at your bait.",
-                            "type": "exactMatch"
-                     }
-              ],
-              "script": ""
-       },
-       {
-              "name": "Reel in the Fish",
-              "isActive": "yes",
-              "isFolder": "no",
-              "multiline": "no",
-              "multilineDelta": "0",
-              "matchall": "no",
-              "filter": "no",
-              "fireLength": "0",
-              "highlight": "no",
-              "highlightFG": "#ff0000",
-              "highlightBG": "#ffff00",
-              "patterns": [
-                     {
-                            "pattern": "Relaxing the tension on your line, you are able to reel again.",
-                            "type": "exactMatch"
-                     },
-                     {
-                            "pattern": "You quickly jerk back your fishing pole and feel the line go taut. You've hooked",
-                            "type": "startOfLine"
-                     }
-              ],
-              "script": ""
-       },
-       {
-              "name": "Fish Sizer",
-              "isActive": "yes",
-              "isFolder": "no",
-              "multiline": "no",
-              "multilineDelta": "0",
-              "matchall": "no",
-              "filter": "no",
-              "fireLength": "0",
-              "highlight": "no",
-              "highlightFG": "#ff0000",
-              "highlightBG": "#ffff00",
-              "patterns": [
-                     {
-                            "pattern": "^You quickly jerk back your fishing pole and feel the line go taut. You've hooked (.+) fish!$",
-                            "type": "regex"
-                     }
-              ],
-              "script": ""
-       }
+  {
+    "name": "Line Teaser",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "You feel a fish nibbling on your hook.", "type": "exactMatch"},
+      {"pattern": "You see the water ripple as a fish makes a medium strike at your bait.", "type": "exactMatch"},
+      {"pattern": "You feel a fish make a small strike at your bait.", "type": "exactMatch"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Jerk the Pole",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "You stagger as a fish makes a large strike at your bait.", "type": "exactMatch"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Reel in the Fish",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "Relaxing the tension on your line, you are able to reel again.", "type": "exactMatch"},
+      {"pattern": "You quickly jerk back your fishing pole and feel the line go taut. You've hooked", "type": "startOfLine"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Fish Sizer",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "^You quickly jerk back your fishing pole and feel the line go taut. You've hooked (.+) fish!$", "type": "regex"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Bait",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "You reel in the last bit of line and your struggle is over.", "type": "substring"},
+      {"pattern": "With a final tug, you finish reeling in the line", "type": "substring"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Cast",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "You carefully thread a rock bass onto the hook of a deep sea fishing pole.", "type": "exactMatch"}
+    ],
+    "script": ""
+  }
 ]

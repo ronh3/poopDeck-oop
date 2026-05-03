@@ -1,8 +1,44 @@
 [
-       {
-              "name": "Utilities",
-              "isActive": "yes",
-              "script": "",
-              "isFolder": "no"
-       }
+  {
+    "name": "00 poopDeck Init",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "10 poopDeck Output",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "20 poopDeck Config",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "30 poopDeck Sailing",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "40 poopDeck Combat",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "50 poopDeck Fishing",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "60 poopDeck Help",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  }
 ]
