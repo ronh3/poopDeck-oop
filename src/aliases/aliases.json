@@ -16,5 +16,11 @@
     "isActive": "yes",
     "script": "",
     "isFolder": "yes"
+  },
+  {
+    "name": "Stats",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
   }
 ]

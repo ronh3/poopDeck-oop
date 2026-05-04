@@ -36,7 +36,19 @@
     "isFolder": "no"
   },
   {
+    "name": "55 poopDeck Stats",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "60 poopDeck Help",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
+    "name": "70 poopDeck GUI",
     "isActive": "yes",
     "script": "",
     "isFolder": "no"

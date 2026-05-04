@@ -6,6 +6,10 @@ poopDeck.state.combat = poopDeck.state.combat or {}
 local combat = poopDeck.combat
 local state = poopDeck.state.combat
 
+local function refreshGui()
+  poopDeck.refreshGui()
+end
+
 combat.reloadTime = 4
 combat.fiveMinuteWarning = 900
 combat.oneMinuteWarning = 1140
@@ -45,6 +49,7 @@ state.session = state.session or 0
 function combat.startSession()
   state.active = true
   state.session = (state.session or 0) + 1
+  refreshGui()
   return state.session
 end
 
@@ -58,6 +63,7 @@ function combat.stopSession()
   state.session = (state.session or 0) + 1
   disableTrigger("Ship Moved Lets Try Again")
   combat.toggleCuring(true)
+  refreshGui()
   return state.session
 end
 
@@ -127,6 +133,7 @@ function combat.setAutoMode(mode)
     combat.stopSession()
     poopDeck.output.warn("AUTO FIRE OFF")
   end
+  refreshGui()
 end
 
 function combat.stop()
@@ -138,6 +145,7 @@ function combat.setWeapon(weapon)
   if poopDeck.config.setWeapon(weapon) then
     state.selectedWeapon = weapon
     poopDeck.output.good("Weapon set to " .. weapon)
+    refreshGui()
   end
 end
 
@@ -179,6 +187,7 @@ function combat.beginFire(commands)
   state.outOfRange = false
   combat.toggleCuring(false)
   poopDeck.safeSendAll(commands)
+  refreshGui()
 end
 
 function combat.autoFire(session)
@@ -200,6 +209,7 @@ function combat.onFiringStarted()
   state.firePending = false
   state.firing = true
   state.outOfRange = false
+  refreshGui()
 end
 
 function combat.onWeaponFired()
@@ -207,6 +217,7 @@ function combat.onWeaponFired()
   state.firePending = false
   state.firing = false
   state.outOfRange = false
+  refreshGui()
   if state.mode == "automatic" then
     local session = state.session
     tempTimer(combat.reloadTime, function() combat.autoFire(session) end)
@@ -222,6 +233,7 @@ function combat.onOutOfRange()
     state.firing = false
     state.outOfRange = false
     disableTrigger("Ship Moved Lets Try Again")
+    refreshGui()
     return
   end
   state.firePending = false
@@ -231,6 +243,7 @@ function combat.onOutOfRange()
     enableTrigger("Ship Moved Lets Try Again")
   end
   poopDeck.output.bad("OUT OF RANGE")
+  refreshGui()
 end
 
 function combat.onShipMoved()
@@ -239,6 +252,7 @@ function combat.onShipMoved()
     state.outOfRange = false
     local session = state.session
     tempTimer(0.5, function() combat.autoFire(session) end)
+    refreshGui()
   end
 end
 
@@ -246,6 +260,7 @@ function combat.onInterrupted()
   combat.toggleCuring(true)
   state.firePending = false
   state.firing = false
+  refreshGui()
   if state.mode == "automatic" then
     poopDeck.output.bad("SHOT INTERRUPTED - RETRYING")
     local session = state.session
@@ -259,6 +274,7 @@ function combat.onMonsterSurfaced()
   local session = combat.startSession()
   state.shots = 0
   state.currentMonster = nil
+  refreshGui()
   poopDeck.output.bad("Seamonster surfaced")
   if state.mode == "automatic" then
     combat.autoFire(session)
@@ -269,6 +285,9 @@ function combat.onMonsterSurfaced()
 end
 
 function combat.onMonsterKilled(monster)
+  if poopDeck.stats and type(poopDeck.stats.recordSeamonsterKill) == "function" then
+    poopDeck.stats.recordSeamonsterKill(monster or state.currentMonster)
+  end
   combat.stopSession()
   poopDeck.output.good((monster or "Seamonster") .. " defeated")
 end
@@ -281,6 +300,7 @@ end
 function combat.onShotHit(monster)
   state.currentMonster = monster or state.currentMonster
   state.shots = (state.shots or 0) + 1
+  refreshGui()
   local total = combat.monsters[state.currentMonster or ""] or 0
   if total > 0 then
     poopDeck.output.shot(state.shots .. " shots taken, " .. math.max(0, total - state.shots) .. " remain")

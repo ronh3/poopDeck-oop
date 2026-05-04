@@ -34,6 +34,16 @@ help.sections = {
       "firsp/first/firc - onager spider/star/chain",
       "fird - thrower disc"
     }
+  },
+  stats = {
+    title = "Stats",
+    rows = {
+      "poopstats - overview",
+      "poopstats db - database status",
+      "poopstats today|week|month|all - period overview",
+      "poopstats fish [today|week|month|all] [type] - fish catches and biggest catches",
+      "poopstats monsters [today|week|month|all] - seamonster kills"
+    }
   }
 }
 
@@ -50,6 +60,7 @@ function help.showSplash()
   poopDeck.output.status("poopDeck " .. poopDeck.version, {
     "poopsail - sailing commands",
     "poopmonster - seamonster commands",
+    "poopstats - catch and kill stats",
     "poopfull - all commands",
     "ship status - current tracked ship/combat state"
   })
@@ -59,6 +70,7 @@ function help.showFull()
   help.showSplash()
   help.showSection("sailing")
   help.showSection("seamonsters")
+  help.showSection("stats")
 end
 
 function help.shipStatus()

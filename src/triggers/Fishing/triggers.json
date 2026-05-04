@@ -54,6 +54,23 @@
     "script": ""
   },
   {
+    "name": "Fishing Line Distance",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "^.*You have (\\d+) feet(?: of line left to bring in\\.)?$", "type": "regex"}
+    ],
+    "script": ""
+  },
+  {
     "name": "Fish Sizer",
     "isActive": "yes",
     "isFolder": "no",
@@ -89,6 +106,23 @@
     "script": ""
   },
   {
+    "name": "Fishing Caught",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "^With a final tug, you finish reeling in the line and land an? .+ weighing \\d+ pounds? and \\d+ ounces?!$", "type": "regex"}
+    ],
+    "script": ""
+  },
+  {
     "name": "Cast",
     "isActive": "yes",
     "isFolder": "no",
@@ -102,6 +136,27 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {"pattern": "You carefully thread a rock bass onto the hook of a deep sea fishing pole.", "type": "exactMatch"}
+    ],
+    "script": ""
+  },
+  {
+    "name": "Fishing Cast Success",
+    "isActive": "yes",
+    "isFolder": "no",
+    "multiline": "no",
+    "multilineDelta": "0",
+    "matchall": "no",
+    "filter": "no",
+    "fireLength": "0",
+    "highlight": "no",
+    "highlightFG": "#ff0000",
+    "highlightBG": "#ffff00",
+    "patterns": [
+      {"pattern": "^You cock back your arm and smoothly cast your line over the railing into the nearby water\\. You judge the cast at about \\d+ feet\\.$", "type": "regex"},
+      {"pattern": "You cast your line", "type": "startOfLine"},
+      {"pattern": "You cast the line", "type": "startOfLine"},
+      {"pattern": "You fling your line", "type": "startOfLine"},
+      {"pattern": "You throw your line", "type": "startOfLine"}
     ],
     "script": ""
   }

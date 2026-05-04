@@ -1,0 +1,9 @@
+[
+  {
+    "name": "poopDeck Stats",
+    "isActive": "yes",
+    "regex": "^poopstats(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

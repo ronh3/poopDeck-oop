@@ -101,7 +101,9 @@
     "highlightFG": "#ff0000",
     "highlightBG": "#ffff00",
     "patterns": [
-      {"pattern": "^.*Sl.*hp.*Hl.*Wd.*$", "type": "regex"}
+      {"pattern": "^= S.+W<-.+C\\/S->.+$", "type": "regex"},
+      {"pattern": "^= Sl .+Wd .+Cr\\/Sp .+$", "type": "regex"},
+      {"pattern": "^= \\[Sail .+\\] \\[Hull.*\\] \\[Wind: .+\\] \\[Crs\\/Spd: .+\\] \\[Seas: .+\\].*$", "type": "regex"}
     ],
     "script": ""
   }

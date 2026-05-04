@@ -1,5 +1,7 @@
 poopDeck = poopDeck or {}
 poopDeck.output = poopDeck.output or {}
+poopDeck.state = poopDeck.state or {}
+poopDeck.state.events = poopDeck.state.events or {}
 
 local output = poopDeck.output
 
@@ -13,10 +15,24 @@ output.colors = {
 
 function output.line(text, color)
   local colorName = color or output.colors.info
+  output.remember(text, colorName)
+  local formatted = "\n[poopDeck] " .. tostring(text) .. "\n\n"
   if cecho then
-    cecho("<" .. colorName .. ">[poopDeck] " .. tostring(text) .. "\n")
+    cecho("<" .. colorName .. ">" .. formatted)
   else
-    echo("[poopDeck] " .. tostring(text) .. "\n")
+    echo(formatted)
+  end
+  poopDeck.refreshGui()
+end
+
+function output.remember(text, color)
+  local events = poopDeck.state.events
+  table.insert(events, 1, {
+    text = tostring(text),
+    color = color or output.colors.info
+  })
+  while #events > 10 do
+    table.remove(events)
   end
 end
 
