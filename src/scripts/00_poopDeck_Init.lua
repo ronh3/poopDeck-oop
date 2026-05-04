@@ -1,6 +1,6 @@
 poopDeck = poopDeck or {}
 
-poopDeck.version = "1.0.0"
+poopDeck.version = "1.0.1"
 poopDeck.packageName = "poopDeck"
 
 poopDeck.state = poopDeck.state or {}
