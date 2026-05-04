@@ -2,13 +2,75 @@ local sent = {}
 local enabled = {}
 local timers = {}
 local killedTimers = {}
+local eventHandlers = {}
+local killedEventHandlers = {}
+local eventCounter = 0
+local cechoOutput = {}
+
+if not table.contains then
+  function table.contains(list, value)
+    for _, item in ipairs(list or {}) do
+      if item == value then
+        return true
+      end
+    end
+    return false
+  end
+end
+
+if not table.deepcopy then
+  function table.deepcopy(value)
+    if type(value) ~= "table" then
+      return value
+    end
+    local copy = {}
+    for key, item in pairs(value) do
+      copy[table.deepcopy(key)] = table.deepcopy(item)
+    end
+    return copy
+  end
+end
+
+if not string.split then
+  function string:split(separator)
+    local parts = {}
+    separator = separator or ""
+    if separator == "" then
+      for index = 1, #self do
+        parts[#parts + 1] = self:sub(index, index)
+      end
+      return parts
+    end
+    local start = 1
+    while true do
+      local found = self:find(separator, start, true)
+      if not found then
+        parts[#parts + 1] = self:sub(start)
+        break
+      end
+      parts[#parts + 1] = self:sub(start, found - 1)
+      start = found + #separator
+    end
+    return parts
+  end
+end
+
+rex = rex or {}
+rex.gsub = rex.gsub or function(text, pattern, replacement)
+  if pattern == "" then
+    return tostring(text)
+  end
+  return (tostring(text):gsub(pattern, replacement))
+end
 
 function send(command)
   table.insert(sent, command)
 end
 
 function echo(_) end
-function cecho(_) end
+function cecho(text)
+  table.insert(cechoOutput, text)
+end
 function deleteLine() end
 
 function tempTimer(delay, callback)
@@ -29,7 +91,28 @@ function disableTrigger(name)
   enabled[name] = false
 end
 
-function registerAnonymousEventHandler(_, _) end
+function registerAnonymousEventHandler(eventName, callback)
+  eventCounter = eventCounter + 1
+  local id = "event" .. tostring(eventCounter)
+  eventHandlers[eventName] = eventHandlers[eventName] or {}
+  eventHandlers[eventName][id] = callback
+  return id
+end
+
+function killAnonymousEventHandler(id)
+  killedEventHandlers[id] = true
+  for _, handlers in pairs(eventHandlers) do
+    handlers[id] = nil
+  end
+end
+
+local function raiseTestEvent(eventName, payload)
+  for _, callback in pairs(eventHandlers[eventName] or {}) do
+    if type(callback) == "function" then
+      callback(eventName, payload)
+    end
+  end
+end
 
 local geyserWidget = {}
 function geyserWidget:setStyleSheet(style)
@@ -37,6 +120,10 @@ function geyserWidget:setStyleSheet(style)
 end
 function geyserWidget:echo(text)
   self.text = text
+end
+function geyserWidget:cecho(text)
+  self.cechoText = text
+  self.text = tostring(text):gsub("<[^>]->", "")
 end
 function geyserWidget:setClickCallback(callback)
   self.callback = callback
@@ -100,8 +187,11 @@ for _, path in ipairs(scripts) do
   assert(loadfile(path))()
 end
 
+package.preload["poopDeck.ftext"] = assert(loadfile("src/resources/ftext.lua"))
+
 local function reset()
   sent = {}
+  cechoOutput = {}
 end
 
 local function resetTimers()
@@ -128,6 +218,14 @@ end
 
 local function assertEqual(actual, expected, label)
   assert(actual == expected, label .. " expected '" .. tostring(expected) .. "', got '" .. tostring(actual) .. "'")
+end
+
+local function killedTimerCount()
+  local count = 0
+  for _ in pairs(killedTimers) do
+    count = count + 1
+  end
+  return count
 end
 
 reset()
@@ -245,11 +343,28 @@ assertEqual(poopDeck.state.ship.repairingSails, false, "fully repaired sails sho
 poopDeck.sailing.parsePrompt("= S50@h97,H78,W<-NE@8kts,C/S->NE@14,IX,[Rw+Sl]")
 poopDeck.gui.build()
 assert(poopDeck.gui.window ~= nil, "gui should create a user window")
+assertEqual(poopDeck.gui.currentTheme.label, "Runewarden", "gui should fall back to runewarden theme when adb is unavailable")
+assert(poopDeck.gui.root.style:match("#172033") ~= nil, "gui root should use themed panel background")
+assert(poopDeck.gui.root.style:match("#cd853f") ~= nil, "gui root should use themed outer border")
+assert(poopDeck.gui.window.style:match("#cd853f") ~= nil, "gui window should use themed outer border when supported")
+assertEqual(poopDeck.gui.window.titleText, "poopDeck " .. tostring(poopDeck.version), "gui window title should include version")
+assertEqual(poopDeck.gui.window.x, "80px", "gui should default to primary-monitor x position")
+assertEqual(poopDeck.gui.window.y, "80px", "gui should default to primary-monitor y position")
+assertEqual(poopDeck.gui.window.width, "720px", "gui should default to wider window width")
+assertEqual(poopDeck.gui.window.height, "360px", "gui should default to compact window height")
+assertEqual(poopDeck.gui.window.restoreLayout, true, "gui should ask Mudlet to restore saved userwindow layout")
+assertEqual(poopDeck.gui.window.dockPosition, "floating", "gui userwindow should start floating")
+assertEqual(poopDeck.gui.window.autoDock, false, "gui userwindow should not auto-dock by default")
+assert(poopDeck.gui.labels.backdrop ~= nil, "gui should create a full-window themed backdrop")
+assert(poopDeck.gui.labels.backdrop.style:match("#172033") ~= nil, "gui backdrop should fill empty restored-window space")
+assert(poopDeck.gui.labels.backdrop.style:match("#cd853f") ~= nil, "gui backdrop should keep the theme border")
 assert(poopDeck.gui.labels.header ~= nil, "gui should create header label")
+assert(poopDeck.gui.labels.header.text:match("poopDeck:") == nil, "gui header should not duplicate window title/version")
+assert(poopDeck.gui.labels.shipLine1.style:match("border%-bottom") == nil, "gui data rows should not draw dark divider lines")
 assert(poopDeck.gui.labels.shipLine1 ~= nil, "gui should create ship line")
 assert(poopDeck.gui.labels.shipSea ~= nil, "gui should create sea label")
 assert(poopDeck.gui.labels.fishingLine2 ~= nil, "gui should create caught fish line")
-assert(poopDeck.gui.labels.events ~= nil, "gui should create event log")
+assert(poopDeck.gui.labels.eventsTitle == nil, "gui should not create squished recent event section")
 assert(poopDeck.gui.labels.header.text:match("Auto:") ~= nil, "gui header should use label colons")
 assert(poopDeck.gui.labels.shipLine1.text:match("Course:") ~= nil, "ship course should use label colon")
 assert(poopDeck.gui.labels.shipLine1.text:match("Row:") ~= nil, "row should be on course line")
@@ -264,7 +379,98 @@ assert(poopDeck.gui.labels.shipLine3.text:match("Rigging:") ~= nil, "rigging sho
 assert(poopDeck.gui.labels.shipLine3.text:match("Row:") == nil, "row should not be on third ship line")
 assert(poopDeck.gui.labels.shipLine3.text:match("Sail:") == nil, "sail should not be on third ship line")
 assert(poopDeck.gui.labels.stopButton == nil, "gui should not create a stop button")
+assert(poopDeck.gui.labels.firingButton ~= nil, "gui should create a firing status button")
+assert(poopDeck.gui.labels.combatLine2.text:match("Firing:") == nil, "gui should not duplicate firing status in mini text")
+assert(poopDeck.gui.labels.combatLine2.text:match("Range:") ~= nil, "gui should keep compact range text")
+assert(poopDeck.gui.labels.firingButton.style:match("#22304a") ~= nil, "firing status should be unlit while idle")
+poopDeck.state.combat.firing = true
+poopDeck.state.combat.outOfRange = false
+poopDeck.gui.update()
+assert(poopDeck.gui.labels.firingButton.style:match("#1d4ed8") ~= nil, "firing status should use active color while firing")
+assertEqual(poopDeck.gui.labels.firingButton.text, "Firing", "firing status should label active firing")
+poopDeck.state.combat.firing = false
+poopDeck.state.combat.outOfRange = true
+poopDeck.gui.update()
+assert(poopDeck.gui.labels.firingButton.style:match("#7f1d1d") ~= nil, "firing status should use dark red while out of range")
+assertEqual(poopDeck.gui.labels.firingButton.text, "Range", "firing status should label range problem")
+poopDeck.state.combat.outOfRange = false
+poopDeck.gui.update()
 assert(poopDeck.gui.visible == true, "gui should show when already aboard")
+poopDeck.gui.setPosition("120", "140")
+assertEqual(poopDeck.gui.window.x, "120px", "gui position command should update x")
+assertEqual(poopDeck.gui.window.y, "140px", "gui position command should update y")
+assertEqual(poopDeck.gui.window.restoreLayout, false, "explicit gui position should disable layout restore")
+poopDeck.gui.setSize("800", "460")
+assertEqual(poopDeck.gui.window.width, "800px", "gui size command should update width")
+assertEqual(poopDeck.gui.window.height, "460px", "gui size command should update height")
+assertEqual(poopDeck.gui.window.restoreLayout, false, "explicit gui size should disable layout restore")
+poopDeck.gui.setRestoreLayout(true)
+assertEqual(poopDeck.gui.window.restoreLayout, true, "gui restore command should re-enable layout restore")
+poopDeck.gui.resetSettings()
+assertEqual(poopDeck.gui.window.x, "80px", "gui reset should restore default x")
+assertEqual(poopDeck.gui.window.y, "80px", "gui reset should restore default y")
+assertEqual(poopDeck.gui.window.height, "360px", "gui reset should restore compact default height")
+assertEqual(poopDeck.gui.window.restoreLayout, true, "gui reset should restore layout restore")
+agnosticdb = {
+  ui = {
+    theme_tags = function()
+      return {
+        accent = "<red>",
+        border = "<peru>",
+        text = "<alice_blue>",
+        muted = "<light_slate_gray>",
+        reset = "<reset>"
+      }
+    end
+  }
+}
+poopDeck.gui.setTheme("adb")
+assertEqual(poopDeck.config.get("guiTheme"), "agnosticdb", "gui theme adb alias should store agnosticdb")
+assertEqual(poopDeck.gui.currentTheme.name, "agnosticdb", "gui should use adb theme source when available")
+assertEqual(poopDeck.gui.currentTheme.accent, "#ff0000", "gui should translate adb accent color to css")
+assert(poopDeck.gui.labels.header.style:match("#cd853f") ~= nil, "gui section style should use adb border color")
+assert(poopDeck.gui.labels.header.cechoText:match("<red>") ~= nil, "gui labels should use adb color tags for text")
+assert(poopDeck.gui.labels.autoButton.style:match("#cd853f") ~= nil, "gui buttons should keep adb-colored border framing")
+reset()
+poopDeck.output.status("Table Test", {
+  "Fish       Today  Biggest",
+  "Test Tuna      1  123lb 5oz"
+})
+local framedOutput = table.concat(cechoOutput)
+assert(framedOutput:match("║") ~= nil, "status output should use bordered frame when adb theme tags exist")
+assert(framedOutput:match("Test Tuna%s+1%s+123lb 5oz") ~= nil, "status output should preserve padded table columns")
+reset()
+poopDeck.output.rawLines({"|Fish      | Today|", "|Test Tuna |    1|"})
+local rawOutput = table.concat(cechoOutput)
+assert(rawOutput:match("║") == nil, "raw table output should not add an outer status frame")
+assert(rawOutput:match("|Fish%s+| Today|") ~= nil, "raw table output should preserve table border spacing")
+poopDeck.gui.setTheme("runewarden")
+assertEqual(poopDeck.config.get("guiTheme"), "runewarden", "explicit runewarden theme should store before adb event")
+local preThemeWindow = poopDeck.gui.window
+poopDeck.gui.registerThemeHandlers()
+raiseTestEvent("agnosticdb.theme.changed", {
+  event = "agnosticdb.theme.changed",
+  reason = "set",
+  name = "mhaldor",
+  label = "Mhaldor",
+  auto_city = false,
+  tags = {
+    accent = "<red>",
+    border = "<dark_slate_grey>",
+    text = "<misty_rose>",
+    muted = "<rosy_brown>",
+    reset = "<reset>"
+  }
+})
+assertEqual(poopDeck.config.get("guiTheme"), "agnosticdb", "adb theme event should switch gui back to adb theme source")
+assertEqual(poopDeck.gui.currentTheme.label, "Mhaldor", "gui should adopt adb theme event label")
+assert(poopDeck.gui.window ~= preThemeWindow, "adb theme event should redraw the gui window")
+assert(poopDeck.gui.labels.header.style:match("#2f4f4f") ~= nil, "adb theme event should update border color from payload")
+assert(poopDeck.gui.labels.header.cechoText:match("<red>") ~= nil, "adb theme event should update label color tags")
+poopDeck.gui.unregisterThemeHandlers()
+agnosticdb = nil
+poopDeck.gui.setTheme("runewarden")
+assertEqual(poopDeck.gui.currentTheme.label, "Runewarden", "gui should support explicit runewarden theme")
 poopDeck.sailing.onDisembarked()
 assertEqual(poopDeck.state.ship.isAboard, false, "disembark should mark off ship")
 assert(poopDeck.gui.visible == false, "disembark should hide gui")
@@ -287,6 +493,25 @@ reset()
 poopDeck.fishing.castMedium()
 assertSent({"queue addclearfull free cast line medium"})
 assertEqual(poopDeck.state.fishing.status, "Casting", "medium cast should set casting state")
+
+reset()
+resetTimers()
+poopDeck.fishing.teaseSoon()
+assertEqual(poopDeck.state.fishing.status, "Teasing", "tease trigger should set teasing state")
+assert(#timers == 2, "tease should schedule command and idle timers")
+assertEqual(timers[1].delay, 2, "tease command should wait before sending")
+assertEqual(timers[2].delay, 4.1, "tease idle reset should wait for balance recovery")
+runTimers()
+assertSent({"tease line"})
+assertEqual(poopDeck.state.fishing.status, "Idle", "tease idle timer should return to idle")
+
+reset()
+resetTimers()
+poopDeck.fishing.teaseSoon()
+poopDeck.fishing.showSize("an enormous")
+runTimers()
+assertSent({"tease line"})
+assertEqual(poopDeck.state.fishing.status, "Hooked", "tease idle timer should not overwrite hook state")
 
 reset()
 resetTimers()
@@ -318,6 +543,16 @@ assertEqual(poopDeck.state.fishing.caughtFishType, "redfin tuna", "caught fish t
 assertEqual(poopDeck.state.fishing.caughtPounds, 233, "caught fish pounds should be stored")
 assertEqual(poopDeck.state.fishing.caughtOunces, 7, "caught fish ounces should be stored")
 
+reset()
+poopDeck.fishing.showSize("a large")
+poopDeck.fishing.onLineDistance("150")
+poopDeck.fishing.onLost()
+assertSent({"queue addclearfull free fcast"})
+assertEqual(poopDeck.state.fishing.status, "Casting", "lost fish should restart casting")
+assertEqual(poopDeck.state.fishing.hooked, false, "lost fish should clear hooked")
+assertEqual(poopDeck.state.fishing.size, nil, "lost fish should clear size")
+assertEqual(poopDeck.state.fishing.lineFeetLeft, nil, "lost fish should clear line distance")
+
 poopDeck.gui.build()
 poopDeck.fishing.showSize("an enormous")
 poopDeck.fishing.onLineDistance("367")
@@ -336,26 +571,114 @@ poopDeck.gui.teardown()
 poopDeck.stats.memory = poopDeck.stats.emptyData()
 poopDeck.stats.loaded = true
 poopDeck.stats.usingMemory = true
+poopDeck.state.fishing.lastCaughtSignature = nil
+poopDeck.state.fishing.lastCaughtAt = nil
 local statsTimestamp = os.time()
+poopDeck.fishing.parseCaughtLine("With a final tug, you finish reeling in the line and land a whiskerknot skrei weighing 74 pounds and 3 ounces!")
+poopDeck.fishing.parseCaughtLine("With a final tug, you finish reeling in the line and land a whiskerknot skrei weighing 74 pounds and 3 ounces!")
+assertEqual(poopDeck.stats.fishSummary("all").total, 1, "duplicate catch triggers should only record one fish")
 poopDeck.stats.recordFishCatch("a redfin tuna", 233, 7, statsTimestamp)
 poopDeck.stats.recordFishCatch("redfin tuna", 200, 0, statsTimestamp)
 poopDeck.stats.recordFishCatch("rock bass", 10, 3, statsTimestamp)
 local fishStats = poopDeck.stats.fishSummary("all")
-assertEqual(fishStats.total, 3, "stats should count all fish catches")
+assertEqual(fishStats.total, 4, "stats should count all fish catches")
 assertEqual(fishStats.biggest.fish_type, "redfin tuna", "stats should store normalized fish type")
 assertEqual(fishStats.biggest.total_ounces, 3735, "stats should track biggest catch by total ounces")
 local tunaStats = poopDeck.stats.fishSummary("all", "redfin tuna")
 assertEqual(tunaStats.total, 2, "stats should filter catches by fish type")
-assertEqual(poopDeck.stats.fishSummary("today").total, 3, "stats should count today's catches")
+assertEqual(poopDeck.stats.fishSummary("today").total, 4, "stats should count today's catches")
 poopDeck.stats.recordSeamonsterKill("a pirate ship", statsTimestamp)
 poopDeck.stats.recordSeamonsterKill("sea hag", statsTimestamp)
 local monsterStats = poopDeck.stats.seamonsterSummary("all")
 assertEqual(monsterStats.total, 2, "stats should count seamonster kills")
 assertEqual(monsterStats.byType["pirate ship"].count, 1, "stats should normalize monster articles")
 assertEqual(poopDeck.stats.seamonsterSummary("today").total, 2, "stats should count today's seamonster kills")
+local fishTable = table.concat(poopDeck.stats.fishTableLines(), "\n")
+assert(fishTable:match("|Fish%s*|Today|Week|Month|All|Biggest%s*|") ~= nil, "fish table should include period headers")
+assert(fishTable:match("|Fish%s+|Today|Week|Month|All|Biggest%s+|") ~= nil, "mdk fish table should use tight separators")
+assert(fishTable:match("|Fish%s+|%s+Today%s+|") == nil, "mdk fish table should not add gap spaces around headers")
+assert(fishTable:match("Redfin Tuna") ~= nil, "fish table should include normalized fish names")
+assert(fishTable:match("Rock Bass") ~= nil, "fish table should include all fish types")
+assert(fishTable:match("233lb 7oz") ~= nil, "fish table should include biggest catch weights")
+assert(fishTable:match("Total") ~= nil, "fish table should include a total row")
+local monsterTable = table.concat(poopDeck.stats.seamonsterTableLines(), "\n")
+assert(monsterTable:match("|Seamonster%s*|Today|Week|Month|All|") ~= nil, "monster table should include period headers")
+assert(monsterTable:match("|Seamonster%s+|Today|Week|Month|All|") ~= nil, "mdk monster table should use tight separators")
+assert(monsterTable:match("Pirate Ship") ~= nil, "monster table should include normalized monster names")
+assert(monsterTable:match("Sea Hag") ~= nil, "monster table should include all monster types")
+assert(monsterTable:match("Total") ~= nil, "monster table should include a total row")
 poopDeck.stats.show("fish all redfin tuna")
 poopDeck.stats.show("monsters today")
 poopDeck.stats.show("db")
+poopDeck.stats.show("reset")
+assertEqual(poopDeck.stats.fishSummary("all").total, 4, "stats reset should require confirmation")
+poopDeck.stats.show("reset confirm")
+assertEqual(poopDeck.stats.fishSummary("all").total, 0, "confirmed reset should clear memory fish stats")
+assertEqual(poopDeck.stats.seamonsterSummary("all").total, 0, "confirmed reset should clear memory monster stats")
+
+local savedDb = db
+local fakeStore = {}
+db = {
+  create = function(_, _, schema)
+    local handle = {}
+    for tableName in pairs(schema or {}) do
+      fakeStore[tableName] = {}
+      handle[tableName] = {__name = tableName}
+    end
+    return handle
+  end,
+  add = function(_, dbtable, record)
+    local name = dbtable and dbtable.__name
+    assert(name and fakeStore[name], "fake db table missing")
+    local copy = {}
+    for key, value in pairs(record or {}) do
+      copy[key] = value
+    end
+    table.insert(fakeStore[name], copy)
+  end,
+  fetch = function(_, dbtable)
+    local name = dbtable and dbtable.__name
+    local rows = {}
+    for index, row in ipairs(fakeStore[name] or {}) do
+      local copy = {}
+      for key, value in pairs(row) do
+        copy[key] = value
+      end
+      rows[index] = copy
+    end
+    return rows
+  end,
+  delete = function(_, dbtable, query)
+    local name = dbtable and dbtable.__name
+    assert(name and fakeStore[name], "fake db table missing")
+    if query == true then
+      fakeStore[name] = {}
+      return true
+    end
+    error("fake db only supports truncate deletes")
+  end
+}
+poopDeck.stats.loaded = false
+poopDeck.stats.load()
+assertEqual(poopDeck.stats.usingMemory, false, "stats should use Mudlet DB when db API exists")
+poopDeck.stats.recordFishCatch("db tuna", 12, 8, statsTimestamp)
+poopDeck.stats.recordSeamonsterKill("a monstrous ketea", statsTimestamp)
+assertEqual(#poopDeck.stats.fetchFishCatches(), 1, "db add should persist fish rows")
+assertEqual(#poopDeck.stats.fetchSeamonsterKills(), 1, "db add should persist seamonster rows")
+assertEqual(poopDeck.stats.fishSummary("all", "db tuna").total, 1, "db-backed fish summary should see persisted row")
+assertEqual(poopDeck.stats.seamonsterSummary("all").byType["monstrous ketea"].count, 1, "db-backed monster summary should see persisted row")
+poopDeck.combat.onMonsterKilled("a pirate ship")
+assertEqual(#poopDeck.stats.fetchSeamonsterKills(), 2, "combat kill handler should persist seamonster row")
+assertEqual(poopDeck.stats.seamonsterSummary("all").byType["pirate ship"].count, 1, "combat kill handler should normalize monster type")
+poopDeck.stats.show("clear")
+assertEqual(#poopDeck.stats.fetchFishCatches(), 1, "db stats reset should require confirmation")
+poopDeck.stats.show("clear confirm")
+assertEqual(#poopDeck.stats.fetchFishCatches(), 0, "confirmed reset should truncate db fish rows")
+assertEqual(#poopDeck.stats.fetchSeamonsterKills(), 0, "confirmed reset should truncate db monster rows")
+db = savedDb
+poopDeck.stats.loaded = false
+poopDeck.stats.memory = poopDeck.stats.emptyData()
+poopDeck.stats.load()
 
 reset()
 poopDeck.combat.manualFire("f")
@@ -394,6 +717,21 @@ assertSent({"curing on"})
 assert(poopDeck.state.combat.active == false, "autosea off should stop active combat")
 assert(poopDeck.state.combat.outOfRange == false, "autosea off should clear range state")
 assert(enabled["Ship Moved Lets Try Again"] == false, "autosea off should disable movement retry trigger")
+
+reset()
+resetTimers()
+poopDeck.combat.setAutoMode("on")
+poopDeck.combat.onMonsterSurfaced()
+poopDeck.combat.onWeaponFired()
+assertEqual(#timers, 4, "monster surfacing and reload should register combat timers")
+reset()
+poopDeck.sailing.onDisembarked()
+assertEqual(killedTimerCount(), 4, "disembark should kill active combat timers")
+assertEqual(poopDeck.state.combat.active, false, "disembark should stop active combat")
+assertEqual(enabled["Ship Moved Lets Try Again"], false, "disembark should disable movement retry trigger")
+reset()
+runTimers()
+assertSent({})
 
 reset()
 resetTimers()

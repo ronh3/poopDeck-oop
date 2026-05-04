@@ -7,6 +7,8 @@ local fishing = poopDeck.fishing
 local state = poopDeck.state.fishing
 
 state.status = state.status or "Idle"
+fishing.teaseCommandDelay = 2
+fishing.teaseIdleDelay = 4.1
 fishing.jerkRetryDelay = 1.9
 fishing.jerkRetryCount = 2
 
@@ -24,9 +26,19 @@ local function normalizeSize(size)
 end
 
 function fishing.teaseSoon()
+  state.teaseSequence = (state.teaseSequence or 0) + 1
+  local sequence = state.teaseSequence
   state.status = "Teasing"
   poopDeck.refreshGui()
-  tempTimer(2, function() send("tease line") end)
+  tempTimer(fishing.teaseCommandDelay, function()
+    send("tease line")
+  end)
+  tempTimer(fishing.teaseIdleDelay, function()
+    if state.teaseSequence == sequence and state.status == "Teasing" then
+      state.status = "Idle"
+      poopDeck.refreshGui()
+    end
+  end)
 end
 
 function fishing.jerk()
@@ -107,6 +119,16 @@ function fishing.onLanded()
   poopDeck.refreshGui()
 end
 
+function fishing.onLost()
+  clearJerkTimers()
+  state.status = "Lost"
+  state.hooked = false
+  state.size = nil
+  state.lineFeetLeft = nil
+  poopDeck.refreshGui()
+  fishing.castAgain()
+end
+
 function fishing.onCaught(fishType, pounds, ounces)
   state.status = "Landed"
   state.caughtFishType = normalizeSize(fishType)
@@ -115,7 +137,18 @@ function fishing.onCaught(fishType, pounds, ounces)
   state.hooked = false
   state.size = nil
   state.lineFeetLeft = nil
-  if poopDeck.stats and type(poopDeck.stats.recordFishCatch) == "function" then
+  local signature = table.concat({
+    tostring(state.caughtFishType or ""),
+    tostring(state.caughtPounds or 0),
+    tostring(state.caughtOunces or 0)
+  }, "|")
+  local timestamp = os.time()
+  local duplicate = state.lastCaughtSignature == signature
+    and state.lastCaughtAt
+    and timestamp - state.lastCaughtAt <= 2
+  state.lastCaughtSignature = signature
+  state.lastCaughtAt = timestamp
+  if not duplicate and poopDeck.stats and type(poopDeck.stats.recordFishCatch) == "function" then
     poopDeck.stats.recordFishCatch(state.caughtFishType, state.caughtPounds, state.caughtOunces)
   end
   poopDeck.refreshGui()

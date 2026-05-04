@@ -1,0 +1,1 @@
+poopDeck.fishing.onLost()

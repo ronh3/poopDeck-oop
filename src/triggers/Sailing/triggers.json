@@ -145,6 +145,7 @@
     "highlightFG": "#ff0000",
     "highlightBG": "#ffff00",
     "patterns": [
+      {"pattern": "You stride up the lowered boarding plank.", "type": "exactMatch"},
       {"pattern": "^You board .+\\.$", "type": "regex"},
       {"pattern": "^You climb aboard .+\\.$", "type": "regex"},
       {"pattern": "^You step aboard .+\\.$", "type": "regex"},
@@ -165,6 +166,7 @@
     "highlightFG": "#ff0000",
     "highlightBG": "#ffff00",
     "patterns": [
+      {"pattern": "You disembark the ship via the lowered gangplank.", "type": "exactMatch"},
       {"pattern": "^You disembark from .+([Ss]hip|[Vv]essel|[Bb]oat|[Tt]rident).*$", "type": "regex"},
       {"pattern": "^You climb down from .+([Ss]hip|[Vv]essel|[Bb]oat|[Tt]rident).*$", "type": "regex"},
       {"pattern": "^You step off .+([Ss]hip|[Vv]essel|[Bb]oat|[Tt]rident).*$", "type": "regex"},

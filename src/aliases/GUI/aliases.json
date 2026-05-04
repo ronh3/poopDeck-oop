@@ -1,0 +1,9 @@
+[
+  {
+    "name": "poopDeck GUI",
+    "isActive": "yes",
+    "regex": "^poopgui(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

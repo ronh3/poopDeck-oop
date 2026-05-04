@@ -6,6 +6,12 @@
     "isFolder": "yes"
   },
   {
+    "name": "GUI",
+    "isActive": "yes",
+    "script": "",
+    "isFolder": "yes"
+  },
+  {
     "name": "Sailing",
     "isActive": "yes",
     "script": "",

@@ -8,7 +8,13 @@ config.defaults = {
   sipHealthPercent = 75,
   autoFire = false,
   selectedWeapon = nil,
-  maintainTarget = "hull"
+  maintainTarget = "hull",
+  guiX = "80px",
+  guiY = "80px",
+  guiWidth = "720px",
+  guiHeight = "360px",
+  guiRestoreLayout = true,
+  guiTheme = "agnosticdb"
 }
 config.data = config.data or {}
 

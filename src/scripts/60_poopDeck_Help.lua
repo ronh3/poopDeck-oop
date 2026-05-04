@@ -38,11 +38,23 @@ help.sections = {
   stats = {
     title = "Stats",
     rows = {
-      "poopstats - overview",
+      "poopstats - overview tables",
       "poopstats db - database status",
+      "poopstats reset confirm - delete all recorded stats",
       "poopstats today|week|month|all - period overview",
       "poopstats fish [today|week|month|all] [type] - fish catches and biggest catches",
       "poopstats monsters [today|week|month|all] - seamonster kills"
+    }
+  },
+  gui = {
+    title = "GUI",
+    rows = {
+      "poopgui - show GUI position and size",
+      "poopgui theme adb|runewarden|default - set GUI theme source",
+      "poopgui restore on|off - use Mudlet's saved UserWindow layout",
+      "poopgui pos <x> <y> - set spawn position",
+      "poopgui size <width> <height> - set spawn size",
+      "poopgui reset - restore default GUI geometry"
     }
   }
 }
@@ -61,6 +73,7 @@ function help.showSplash()
     "poopsail - sailing commands",
     "poopmonster - seamonster commands",
     "poopstats - catch and kill stats",
+    "poopgui - GUI position and size",
     "poopfull - all commands",
     "ship status - current tracked ship/combat state"
   })
@@ -71,6 +84,7 @@ function help.showFull()
   help.showSection("sailing")
   help.showSection("seamonsters")
   help.showSection("stats")
+  help.showSection("gui")
 end
 
 function help.shipStatus()

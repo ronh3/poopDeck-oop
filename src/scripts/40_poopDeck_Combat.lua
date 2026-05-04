@@ -45,6 +45,27 @@ state.outOfRange = state.outOfRange or false
 state.shots = state.shots or 0
 state.firedSpider = state.firedSpider or false
 state.session = state.session or 0
+state.timers = state.timers or {}
+
+local function trackTimer(delay, callback)
+  if type(tempTimer) ~= "function" then
+    return nil
+  end
+  local timerId = tempTimer(delay, callback)
+  if timerId then
+    state.timers[#state.timers + 1] = timerId
+  end
+  return timerId
+end
+
+function combat.clearTimers()
+  if type(killTimer) == "function" then
+    for _, timerId in ipairs(state.timers or {}) do
+      pcall(killTimer, timerId)
+    end
+  end
+  state.timers = {}
+end
 
 function combat.startSession()
   state.active = true
@@ -54,6 +75,7 @@ function combat.startSession()
 end
 
 function combat.stopSession()
+  combat.clearTimers()
   state.active = false
   state.firePending = false
   state.firing = false
@@ -220,9 +242,9 @@ function combat.onWeaponFired()
   refreshGui()
   if state.mode == "automatic" then
     local session = state.session
-    tempTimer(combat.reloadTime, function() combat.autoFire(session) end)
+    trackTimer(combat.reloadTime, function() combat.autoFire(session) end)
   else
-    tempTimer(combat.reloadTime, function() poopDeck.output.good("READY TO FIRE") end)
+    trackTimer(combat.reloadTime, function() poopDeck.output.good("READY TO FIRE") end)
   end
 end
 
@@ -251,7 +273,7 @@ function combat.onShipMoved()
     disableTrigger("Ship Moved Lets Try Again")
     state.outOfRange = false
     local session = state.session
-    tempTimer(0.5, function() combat.autoFire(session) end)
+    trackTimer(0.5, function() combat.autoFire(session) end)
     refreshGui()
   end
 end
@@ -264,7 +286,7 @@ function combat.onInterrupted()
   if state.mode == "automatic" then
     poopDeck.output.bad("SHOT INTERRUPTED - RETRYING")
     local session = state.session
-    tempTimer(combat.reloadTime, function() combat.autoFire(session) end)
+    trackTimer(combat.reloadTime, function() combat.autoFire(session) end)
   else
     poopDeck.output.bad("SHOT INTERRUPTED")
   end
@@ -279,9 +301,9 @@ function combat.onMonsterSurfaced()
   if state.mode == "automatic" then
     combat.autoFire(session)
   end
-  tempTimer(combat.fiveMinuteWarning, function() poopDeck.output.good("Monster in 5 minutes") end)
-  tempTimer(combat.oneMinuteWarning, function() poopDeck.output.good("Monster in 1 minute") end)
-  tempTimer(combat.nextMonsterWarning, function() poopDeck.output.bad("Reel in, it is monster time") end)
+  trackTimer(combat.fiveMinuteWarning, function() poopDeck.output.good("Monster in 5 minutes") end)
+  trackTimer(combat.oneMinuteWarning, function() poopDeck.output.good("Monster in 1 minute") end)
+  trackTimer(combat.nextMonsterWarning, function() poopDeck.output.bad("Reel in, it is monster time") end)
 end
 
 function combat.onMonsterKilled(monster)
@@ -318,10 +340,5 @@ function combat.onSpidershot()
 end
 
 function combat.promptOverlay()
-  if state.firing then
-    poopDeck.output.line("FIRING", "green")
-  end
-  if state.outOfRange then
-    poopDeck.output.line("OUT OF RANGE", "red")
-  end
+  refreshGui()
 end

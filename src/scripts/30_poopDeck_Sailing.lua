@@ -653,6 +653,9 @@ function sailing.onDisembarked()
   ship.hasSailBoost = false
   ship.actualSpeed = nil
   ship.turningTo = nil
+  if poopDeck.combat and type(poopDeck.combat.stopSession) == "function" then
+    poopDeck.combat.stopSession()
+  end
   if poopDeck.gui and type(poopDeck.gui.hide) == "function" then
     poopDeck.gui.hide()
   else

@@ -1,8 +1,8 @@
 {
        "package": "poopDeck",
-       "title": "poopDeck Restart 0.0.19",
+       "title": "poopDeck Restart 1.0.0",
        "description": "Achaea seafaring helpers for Mudlet.",
-       "version": "0.0.19",
+       "version": "1.0.0",
        "author": "Nikolais",
        "icon": "imonaboat.png",
        "dependencies": "",

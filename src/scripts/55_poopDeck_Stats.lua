@@ -45,20 +45,6 @@ local function dateKeys(timestamp)
   }
 end
 
-local function sqlQuote(value)
-  if value == nil then
-    return "''"
-  end
-  return "'" .. tostring(value):gsub("'", "''") .. "'"
-end
-
-local function dbConn()
-  if type(db) ~= "table" or type(db.__conn) ~= "table" then
-    return nil
-  end
-  return db.__conn[stats.dbName:lower()]
-end
-
 local function ensureMemoryShape()
   stats.memory = type(stats.memory) == "table" and stats.memory or {}
   stats.memory.fish_catches = type(stats.memory.fish_catches) == "table" and stats.memory.fish_catches or {}
@@ -136,16 +122,42 @@ function stats.ensureLoaded()
   ensureMemoryShape()
 end
 
-local function insertSql(sql)
-  local conn = dbConn()
-  if not conn or type(conn.execute) ~= "function" then
-    return false
+local function reportWriteFailure(err)
+  if stats.writeErrorReported then
+    return
   end
-  local ok = pcall(conn.execute, conn, sql)
-  if ok and type(conn.commit) == "function" then
-    pcall(conn.commit, conn)
+  stats.writeErrorReported = true
+  if poopDeck.output and poopDeck.output.warn then
+    poopDeck.output.warn("Could not write stats database: " .. tostring(err or "unknown error"))
   end
-  return ok
+end
+
+local function safeAdd(tbl, record)
+  if type(db) ~= "table" or type(db.add) ~= "function" or not tbl then
+    return false, "Mudlet DB add API unavailable"
+  end
+
+  local ok, err = pcall(db.add, db, tbl, record)
+  if not ok then
+    reportWriteFailure(err)
+    return false, err
+  end
+  return true
+end
+
+local function safeDeleteAll(tbl)
+  if type(db) ~= "table" or type(db.delete) ~= "function" or not tbl then
+    return false, "Mudlet DB delete API unavailable"
+  end
+
+  local ok, result, err = pcall(db.delete, db, tbl, true)
+  if not ok then
+    return false, result
+  end
+  if result == nil and err ~= nil then
+    return false, err
+  end
+  return true
 end
 
 local function copyList(list)
@@ -170,6 +182,30 @@ function stats.fetchSeamonsterKills()
     return safeFetch(stats.seamonster_kills) or {}
   end
   return copyList(stats.memory.seamonster_kills)
+end
+
+function stats.resetData()
+  stats.ensureLoaded()
+  stats.memory = stats.emptyData()
+  stats.writeErrorReported = nil
+
+  if stats.usingMemory then
+    return true
+  end
+
+  local fishOk, fishErr = safeDeleteAll(stats.fish_catches)
+  local monsterOk, monsterErr = safeDeleteAll(stats.seamonster_kills)
+  if not fishOk or not monsterOk then
+    if poopDeck.output and poopDeck.output.warn then
+      poopDeck.output.warn(
+        "Could not reset stats database: " ..
+        tostring(fishErr or monsterErr or "unknown error")
+      )
+    end
+    return false
+  end
+
+  return true
 end
 
 function stats.periodKey(period, timestamp)
@@ -220,6 +256,161 @@ local function periodLabel(period)
   return labels[period or "all"] or labels.all
 end
 
+local tablePeriods = {
+  {key = "today"},
+  {key = "week"},
+  {key = "month"},
+  {key = "all"}
+}
+
+local function cellText(value)
+  return tostring(value == nil and "" or value)
+end
+
+local function padCell(value, width, alignRight)
+  value = cellText(value)
+  local padding = string.rep(" ", math.max(0, width - #value))
+  if alignRight then
+    return padding .. value
+  end
+  return value .. padding
+end
+
+local function splitLines(text)
+  local lines = {}
+  text = tostring(text or "")
+  for line in (text .. "\n"):gmatch("(.-)\n") do
+    if line ~= "" then
+      lines[#lines + 1] = line
+    end
+  end
+  return lines
+end
+
+local function tableMaker()
+  if stats.tableMakerUnavailable then
+    return nil
+  end
+  for _, moduleName in ipairs({"@PKGNAME@.ftext", "poopDeck.ftext", "MDK.ftext"}) do
+    local ok, ftext = pcall(require, moduleName)
+    if ok and type(ftext) == "table" and type(ftext.TableMaker) == "table" then
+      return ftext.TableMaker
+    end
+  end
+  stats.tableMakerUnavailable = true
+  return nil
+end
+
+local function tableMakerLines(headers, rows, rightAligned, title)
+  if #rows == 0 then
+    return nil
+  end
+
+  local TableMaker = tableMaker()
+  if not TableMaker then
+    return nil
+  end
+
+  local widths = {}
+  for index, header in ipairs(headers) do
+    widths[index] = #cellText(header)
+  end
+  for _, row in ipairs(rows) do
+    for index, value in ipairs(row) do
+      widths[index] = math.max(widths[index] or 0, #cellText(value))
+    end
+  end
+
+  local ok, maker = pcall(TableMaker.new, TableMaker, {
+    title = title or "",
+    printTitle = title ~= nil and title ~= "",
+    printHeaders = true,
+    separateRows = false,
+    forceHeaderSeparator = true,
+    formatType = "",
+    frameColor = "",
+    separatorColor = "",
+    titleColor = "",
+    headCharacter = "=",
+    footCharacter = "=",
+    rowSeparator = "-",
+    edgeCharacter = "|",
+    separator = "|"
+  })
+  if not ok or type(maker) ~= "table" then
+    return nil
+  end
+
+  for index, header in ipairs(headers) do
+    maker:addColumn({
+      name = header,
+      width = widths[index],
+      alignment = rightAligned and rightAligned[index] and "right" or "left",
+      formatType = "",
+      textColor = "",
+      wrap = false,
+      nogap = true
+    })
+  end
+  for _, row in ipairs(rows) do
+    local textRow = {}
+    for index, value in ipairs(row) do
+      textRow[index] = cellText(value)
+    end
+    maker:addRow(textRow)
+  end
+
+  local assembledOk, assembled = pcall(function()
+    return maker:assemble()
+  end)
+  if not assembledOk or type(assembled) ~= "string" then
+    return nil
+  end
+  return splitLines(assembled)
+end
+
+local function tableLines(headers, rows, rightAligned, title)
+  if #rows == 0 then
+    return {"(none)"}
+  end
+
+  local mdkLines = tableMakerLines(headers, rows, rightAligned, title)
+  if mdkLines then
+    return mdkLines
+  end
+
+  local widths = {}
+  for index, header in ipairs(headers) do
+    widths[index] = #cellText(header)
+  end
+
+  for _, row in ipairs(rows) do
+    for index, value in ipairs(row) do
+      widths[index] = math.max(widths[index] or 0, #cellText(value))
+    end
+  end
+
+  local lines = {}
+  local headerCells = {}
+  local separatorCells = {}
+  for index, header in ipairs(headers) do
+    headerCells[index] = padCell(header, widths[index], rightAligned and rightAligned[index])
+    separatorCells[index] = string.rep("-", widths[index])
+  end
+  lines[#lines + 1] = table.concat(headerCells, "  ")
+  lines[#lines + 1] = table.concat(separatorCells, "  ")
+
+  for _, row in ipairs(rows) do
+    local cells = {}
+    for index, value in ipairs(row) do
+      cells[index] = padCell(value, widths[index], rightAligned and rightAligned[index])
+    end
+    lines[#lines + 1] = table.concat(cells, "  ")
+  end
+
+  return lines
+end
+
 function stats.formatWeight(record, includeType)
   if not record then
     return "-"
@@ -254,17 +445,7 @@ function stats.recordFishCatch(fishType, pounds, ounces, timestamp)
   }
 
   if not stats.usingMemory then
-    local ok = insertSql(string.format(
-      "INSERT INTO fish_catches (fish_type, pounds, ounces, total_ounces, caught_at, day_key, week_key, month_key) VALUES (%s, %d, %d, %d, %d, %s, %s, %s)",
-      sqlQuote(record.fish_type),
-      record.pounds,
-      record.ounces,
-      record.total_ounces,
-      record.caught_at,
-      sqlQuote(record.day_key),
-      sqlQuote(record.week_key),
-      sqlQuote(record.month_key)
-    ))
+    local ok = safeAdd(stats.fish_catches, record)
     if ok then
       return record
     end
@@ -292,14 +473,7 @@ function stats.recordSeamonsterKill(monsterType, timestamp)
   }
 
   if not stats.usingMemory then
-    local ok = insertSql(string.format(
-      "INSERT INTO seamonster_kills (monster_type, killed_at, day_key, week_key, month_key) VALUES (%s, %d, %s, %s, %s)",
-      sqlQuote(record.monster_type),
-      record.killed_at,
-      sqlQuote(record.day_key),
-      sqlQuote(record.week_key),
-      sqlQuote(record.month_key)
-    ))
+    local ok = safeAdd(stats.seamonster_kills, record)
     if ok then
       return record
     end
@@ -376,6 +550,108 @@ local function sortedMapValues(map, countField)
   return values
 end
 
+local function typeNamesFromSummaries(summaries)
+  local names = {}
+  local seen = {}
+  for _, period in ipairs(tablePeriods) do
+    local summary = summaries[period.key]
+    for name in pairs(summary and summary.byType or {}) do
+      if not seen[name] then
+        seen[name] = true
+        names[#names + 1] = name
+      end
+    end
+  end
+
+  table.sort(names, function(left, right)
+    local leftCount = tonumber(summaries.all.byType[left] and summaries.all.byType[left].count) or 0
+    local rightCount = tonumber(summaries.all.byType[right] and summaries.all.byType[right].count) or 0
+    if leftCount ~= rightCount then
+      return leftCount > rightCount
+    end
+    return titleCase(left) < titleCase(right)
+  end)
+  return names
+end
+
+local function summaryCount(summaries, period, name)
+  local entry = summaries[period] and summaries[period].byType and summaries[period].byType[name]
+  return entry and entry.count or 0
+end
+
+function stats.fishTableLines(title)
+  local summaries = {}
+  for _, period in ipairs(tablePeriods) do
+    summaries[period.key] = stats.fishSummary(period.key)
+  end
+
+  local rows = {}
+  for _, name in ipairs(typeNamesFromSummaries(summaries)) do
+    local allEntry = summaries.all.byType[name]
+    rows[#rows + 1] = {
+      titleCase(name),
+      summaryCount(summaries, "today", name),
+      summaryCount(summaries, "week", name),
+      summaryCount(summaries, "month", name),
+      summaryCount(summaries, "all", name),
+      stats.formatWeight(allEntry and allEntry.biggest, false)
+    }
+  end
+
+  if #rows > 0 then
+    rows[#rows + 1] = {
+      "Total",
+      summaries.today.total,
+      summaries.week.total,
+      summaries.month.total,
+      summaries.all.total,
+      stats.formatWeight(summaries.all.biggest, true)
+    }
+  end
+
+  return tableLines(
+    {"Fish", "Today", "Week", "Month", "All", "Biggest"},
+    rows,
+    {[2] = true, [3] = true, [4] = true, [5] = true},
+    title
+  )
+end
+
+function stats.seamonsterTableLines(title)
+  local summaries = {}
+  for _, period in ipairs(tablePeriods) do
+    summaries[period.key] = stats.seamonsterSummary(period.key)
+  end
+
+  local rows = {}
+  for _, name in ipairs(typeNamesFromSummaries(summaries)) do
+    rows[#rows + 1] = {
+      titleCase(name),
+      summaryCount(summaries, "today", name),
+      summaryCount(summaries, "week", name),
+      summaryCount(summaries, "month", name),
+      summaryCount(summaries, "all", name)
+    }
+  end
+
+  if #rows > 0 then
+    rows[#rows + 1] = {
+      "Total",
+      summaries.today.total,
+      summaries.week.total,
+      summaries.month.total,
+      summaries.all.total
+    }
+  end
+
+  return tableLines(
+    {"Seamonster", "Today", "Week", "Month", "All"},
+    rows,
+    {[2] = true, [3] = true, [4] = true, [5] = true},
+    title
+  )
+end
+
 local function parsePeriod(value)
   value = tostring(value or ""):lower()
   if value == "today" or value == "day" or value == "daily" then
@@ -420,6 +696,8 @@ function stats.showOverview(period)
     "Seamonster kills - " .. table.concat(monsterParts, " | "),
     "Biggest catch: " .. stats.formatWeight(allFish.biggest, true)
   })
+  poopDeck.output.rawLines(stats.fishTableLines("Fish Catches"))
+  poopDeck.output.rawLines(stats.seamonsterTableLines("Seamonster Kills"))
 end
 
 function stats.showFish(period, fishType)
@@ -480,6 +758,20 @@ function stats.showDb()
   })
 end
 
+function stats.showReset(rest)
+  if trim(rest):lower() ~= "confirm" then
+    poopDeck.output.status("poopDeck Stats Reset", {
+      "This permanently deletes all fish catches and seamonster kills.",
+      "Run: poopstats reset confirm"
+    })
+    return
+  end
+
+  if stats.resetData() then
+    poopDeck.output.warn("Stats database reset")
+  end
+end
+
 function stats.show(args)
   local input = trim(args)
   if input == "" then
@@ -519,9 +811,15 @@ function stats.show(args)
     return
   end
 
+  if first == "reset" or first == "clear" then
+    stats.showReset(rest)
+    return
+  end
+
   poopDeck.output.status("poopDeck Stats", {
     "poopstats - overview",
     "poopstats db - database status",
+    "poopstats reset confirm - delete all recorded stats",
     "poopstats today|week|month|all",
     "poopstats fish [today|week|month|all] [type]",
     "poopstats monsters [today|week|month|all]"
