@@ -129,14 +129,37 @@ poopDeck watches for fishing lines that indicate baiting, casting, strikes, hook
 line distance, lost fish, and landed fish. It updates GUI state and records caught fish
 in the stats database.
 
+The bait/recast step is configurable. By default, poopDeck gets bass from a tank,
+baits the hook with bass, and casts at medium distance. The configured `Bait`
+sequence sends:
+
+```text
+queue addclearfull free <bait get command>
+queue add free bait hook with <bait item>
+queue add free cast line <cast distance>
+```
+
+The bait item is inferred from commands like `get bass from tank` or
+`get rock bass from tank`.
+
+| Command | Description |
+| --- | --- |
+| `poopfish` | Shows fishing settings, including bait command and cast distance. |
+| `poopfish bait` | Runs the configured get/bait/cast sequence. |
+| `poopfish baitcmd <get command>` | Sets the retrieval command used by the GUI `Bait` button and lost-fish recast. |
+| `poopfish baitcmd default` | Restores `get bass from tank`. |
+| `poopfish castdistance <distance>` | Sets the cast distance used by bait/recast and the GUI `Cast` button. |
+| `poopfish castdistance default` | Restores `medium`. |
+
 The GUI includes buttons for common fishing actions:
 
 | Button | Description |
 | --- | --- |
-| `Fcast` | Runs the queued fcast command. |
-| `Medium` | Casts line at medium distance. |
-| `Tease` | Teases the line. |
-| `Reel` | Reels line in. |
+| `Bait` | Runs the configured get/bait/cast sequence. |
+| `Cast` | Casts line at the configured distance. |
+| `Idle` | Indicates idle fishing state. This display button does not send a command. |
+| `Tease` | Indicates teasing state. This display button does not send a command. |
+| `Reel` | Reels line in after a fish is hooked. |
 
 ## Stats Commands
 

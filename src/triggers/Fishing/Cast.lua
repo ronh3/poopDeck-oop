@@ -1,1 +1,1 @@
-poopDeck.fishing.castMedium()
+poopDeck.fishing.onBaited()

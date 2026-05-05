@@ -65,6 +65,7 @@ local cssColors = {
   mediumaquamarine = "#66cdaa",
   midnightblue = "#191970",
   mistyrose = "#ffe4e1",
+  olivedrab = "#6b8e23",
   orange = "#ffa500",
   orangered = "#ff4500",
   orchid = "#da70d6",
@@ -174,21 +175,105 @@ local function cssColor(value, fallback)
   return cssColors[key] or fallback or text:gsub("_", "")
 end
 
+local function expandHex(hex)
+  local text = tostring(hex or "")
+  if text:match("^#%x%x%x$") then
+    return "#" .. text:sub(2, 2) .. text:sub(2, 2)
+      .. text:sub(3, 3) .. text:sub(3, 3)
+      .. text:sub(4, 4) .. text:sub(4, 4)
+  end
+  if text:match("^#%x%x%x%x%x%x$") then
+    return text
+  end
+  return nil
+end
+
+local function hexToRgb(hex)
+  local text = expandHex(hex)
+  if not text then
+    return nil
+  end
+
+  return {
+    r = tonumber(text:sub(2, 3), 16),
+    g = tonumber(text:sub(4, 5), 16),
+    b = tonumber(text:sub(6, 7), 16)
+  }
+end
+
+local function rgbToHex(red, green, blue)
+  local function clamp(value)
+    value = math.floor((tonumber(value) or 0) + 0.5)
+    if value < 0 then
+      return 0
+    end
+    if value > 255 then
+      return 255
+    end
+    return value
+  end
+
+  return string.format("#%02x%02x%02x", clamp(red), clamp(green), clamp(blue))
+end
+
+local function blend(left, right, rightWeight)
+  local leftRgb = hexToRgb(left)
+  local rightRgb = hexToRgb(right)
+  if not leftRgb or not rightRgb then
+    return left
+  end
+
+  local weight = tonumber(rightWeight) or 0
+  if weight < 0 then
+    weight = 0
+  elseif weight > 1 then
+    weight = 1
+  end
+
+  local leftWeight = 1 - weight
+  return rgbToHex(
+    leftRgb.r * leftWeight + rightRgb.r * weight,
+    leftRgb.g * leftWeight + rightRgb.g * weight,
+    leftRgb.b * leftWeight + rightRgb.b * weight
+  )
+end
+
+local function darken(hex, amount)
+  return blend(hex, "#000000", amount)
+end
+
+local function deriveAdbSurfaces(theme)
+  local borderBase = expandHex(theme.border) or builtinThemes.runewarden.border
+  local accentBase = expandHex(theme.accent) or builtinThemes.runewarden.accent
+  local mutedBase = expandHex(theme.muted) or accentBase
+
+  theme.background = darken(accentBase, 0.88)
+  theme.panel = blend(darken(accentBase, 0.75), borderBase, 0.08)
+  theme.section = blend(darken(accentBase, 0.62), borderBase, 0.12)
+  theme.button = blend(darken(accentBase, 0.72), mutedBase, 0.15)
+  theme.buttonBorder = theme.border
+  theme.active = blend(darken(accentBase, 0.18), "#ffffff", 0.08)
+end
+
 local function adbTheme()
   local theme = {}
   for key, value in pairs(builtinThemes.runewarden) do
     theme[key] = value
   end
   local tags
+  local payload = type(gui.adbThemePayload) == "table" and gui.adbThemePayload or nil
+  if payload and type(payload.tags) == "table" then
+    tags = payload.tags
+    theme.label = payload.label or theme.label
+  end
   if type(agnosticdb) == "table" and type(agnosticdb.ui) == "table" and type(agnosticdb.ui.theme_tags) == "function" then
     local ok, result = pcall(agnosticdb.ui.theme_tags)
     if ok and type(result) == "table" then
-      tags = result
+      if not gui.preferAdbThemePayload then
+        tags = result
+        theme.label = "agnosticDB"
+      end
     end
-  end
-  if type(gui.adbThemePayload) == "table" and type(gui.adbThemePayload.tags) == "table" then
-    tags = gui.adbThemePayload.tags
-    theme.label = gui.adbThemePayload.label or theme.label
   end
   if type(tags) ~= "table" then
     return nil
@@ -199,8 +284,7 @@ local function adbTheme()
   theme.border = cssColor(tags.border, theme.border)
   theme.text = cssColor(tags.text, theme.text)
   theme.muted = cssColor(tags.muted, theme.muted)
-  theme.buttonBorder = theme.border
-  theme.active = theme.accent
+  deriveAdbSurfaces(theme)
   theme.range = "#7f1d1d"
   theme.tags = {
     accent = tags.accent or "<royal_blue>",
@@ -284,9 +368,7 @@ local function rebuildStyles()
     radius = "3px",
     size = "9pt"
   })
-  gui.styles.backdrop = labelStyle(theme.panel, theme.text, {
-    border = "1px solid " .. theme.border
-  })
+  gui.styles.backdrop = labelStyle(theme.panel, theme.text)
   seaGoodStyle = labelStyle(theme.panel, "#22c55e")
   seaReducedStyle = labelStyle(theme.panel, "#facc15")
   seaBadStyle = labelStyle(theme.panel, "#ef4444")
@@ -379,6 +461,27 @@ local function caughtText(fishing)
   )
 end
 
+local function fishingStatusIs(fishing, ...)
+  local status = tostring((fishing or {}).status or ""):lower()
+  for _, expected in ipairs({...}) do
+    if status == tostring(expected):lower() then
+      return true
+    end
+  end
+  return false
+end
+
+local function fishingButtonStates(fishing)
+  fishing = fishing or {}
+  return {
+    bait = fishing.lastAction == "bait",
+    cast = fishing.lastAction == "cast",
+    idle = fishing.lastAction == "idle" or (fishing.lastAction == nil and fishingStatusIs(fishing, "idle")),
+    tease = fishing.lastAction == "tease",
+    reel = fishing.lastAction == "reel"
+  }
+end
+
 local function createLabel(key, spec, parent, style)
   local label = Geyser.Label:new({
     name = "poopDeck.Gui." .. key,
@@ -397,7 +500,24 @@ local setLabel
 local function createButton(key, spec, parent, text, callback)
   local label = createLabel(key, spec, parent, buttonStyle)
   setLabel(key, text, "text")
-  label:setClickCallback(callback)
+  local callbackName = "poopDeckGui_" .. key
+  _G[callbackName] = function()
+    if type(callback) == "function" then
+      callback()
+      return
+    end
+
+    if type(callback) == "string" then
+      local context = _G
+      for part in callback:gmatch("[^%.]+") do
+        context = type(context) == "table" and context[part] or nil
+      end
+      if type(context) == "function" then
+        context()
+      end
+    end
+  end
+  label:setClickCallback(callbackName)
   return label
 end
 
@@ -547,10 +667,11 @@ function gui.build()
   createLabel("fishingTitle", {x = 0, y = 242, width = "100%", height = "24px"}, gui.root, sectionStyle)
   createLabel("fishingLine1", {x = 0, y = 268, width = "100%", height = "23px"}, gui.root)
   createLabel("fishingLine2", {x = 0, y = 292, width = "100%", height = "23px"}, gui.root)
-  createButton("fishCastButton", {x = "2%", y = 318, width = "22%", height = "25px"}, gui.root, "Fcast", "poopDeck.gui.fishingCastAgain")
-  createButton("fishMediumButton", {x = "26%", y = 318, width = "22%", height = "25px"}, gui.root, "Medium", "poopDeck.gui.fishingCastMedium")
-  createButton("fishTeaseButton", {x = "50%", y = 318, width = "22%", height = "25px"}, gui.root, "Tease", "poopDeck.gui.fishingTease")
-  createButton("fishReelButton", {x = "74%", y = 318, width = "22%", height = "25px"}, gui.root, "Reel", "poopDeck.gui.fishingReel")
+  createButton("fishCastButton", {x = "2%", y = 318, width = "17%", height = "25px"}, gui.root, "Bait", "poopDeck.gui.fishingCastAgain")
+  createButton("fishMediumButton", {x = "21%", y = 318, width = "17%", height = "25px"}, gui.root, "Cast", "poopDeck.gui.fishingCastMedium")
+  createButton("fishIdleButton", {x = "40%", y = 318, width = "17%", height = "25px"}, gui.root, "Idle", "poopDeck.gui.noop")
+  createButton("fishTeaseButton", {x = "59%", y = 318, width = "17%", height = "25px"}, gui.root, "Tease", "poopDeck.gui.noop")
+  createButton("fishReelButton", {x = "78%", y = 318, width = "20%", height = "25px"}, gui.root, "Reel", "poopDeck.gui.fishingReel")
 
   gui.update()
   if (poopDeck.state.ship or {}).isAboard then
@@ -579,7 +700,7 @@ function gui.update()
   ), "accent")
 
   setLabel("shipTitle", string.format(
-    "└─Ship: %s%s%s─┘",
+    "Ship: %s%s%s",
     valueOrDash(ship.name),
     ship.alias and (" / " .. ship.alias) or "",
     ship.id and (" #" .. tostring(ship.id)) or ""
@@ -610,7 +731,7 @@ function gui.update()
     titleValue(ship.riggings)
   ))
 
-  setLabel("combatTitle", "└─Seamonsters─┘", "accent")
+  setLabel("combatTitle", "Seamonsters", "accent")
   setLabel("combatLine1", string.format(
     "Status: %s | Shots: %s | Monster: %s",
     combatStatus(),
@@ -623,13 +744,17 @@ function gui.update()
     combat.outOfRange and "Out" or "Ok"
   ))
   setLabelStyle("autoButton", mode == "automatic" and activeButtonStyle or buttonStyle)
+  setLabel("autoButton", "Auto")
   setLabelStyle("firingButton", combat.outOfRange and rangeButtonStyle or (combat.firing and activeButtonStyle or buttonStyle))
   setLabel("firingButton", combat.outOfRange and "Range" or "Firing")
   setLabelStyle("ballistaButton", weapon == "ballista" and activeButtonStyle or buttonStyle)
+  setLabel("ballistaButton", "Ballista")
   setLabelStyle("onagerButton", weapon == "onager" and activeButtonStyle or buttonStyle)
+  setLabel("onagerButton", "Onager")
   setLabelStyle("throwerButton", weapon == "thrower" and activeButtonStyle or buttonStyle)
+  setLabel("throwerButton", "Thrower")
 
-  setLabel("fishingTitle", "└─Fishing─┘", "accent")
+  setLabel("fishingTitle", "Fishing", "accent")
   setLabel("fishingLine1", string.format(
     "Status: %s | Hooked: %s | Size: %s | %s",
     titleValue(fishing.status),
@@ -638,6 +763,17 @@ function gui.update()
     fishingLineText(fishing)
   ))
   setLabel("fishingLine2", caughtText(fishing))
+  local fishButtons = fishingButtonStates(fishing)
+  setLabelStyle("fishCastButton", fishButtons.bait and activeButtonStyle or buttonStyle)
+  setLabelStyle("fishMediumButton", fishButtons.cast and activeButtonStyle or buttonStyle)
+  setLabelStyle("fishIdleButton", fishButtons.idle and activeButtonStyle or buttonStyle)
+  setLabelStyle("fishTeaseButton", fishButtons.tease and activeButtonStyle or buttonStyle)
+  setLabelStyle("fishReelButton", fishButtons.reel and activeButtonStyle or buttonStyle)
+  setLabel("fishCastButton", "Bait")
+  setLabel("fishMediumButton", "Cast")
+  setLabel("fishIdleButton", "Idle")
+  setLabel("fishTeaseButton", "Tease")
+  setLabel("fishReelButton", "Reel")
 
 end
 
@@ -694,8 +830,12 @@ function gui.fishingCastMedium()
   poopDeck.fishing.castMedium()
 end
 
+function gui.fishingIdle()
+  poopDeck.fishing.idle()
+end
+
 function gui.fishingTease()
-  poopDeck.safeSend("tease line")
+  poopDeck.fishing.teaseNow()
 end
 
 function gui.fishingReel()
@@ -731,7 +871,9 @@ function gui.onAdbThemeChanged(eventName, payload)
     end
   end
   if gui.window then
+    gui.preferAdbThemePayload = true
     gui.rebuild()
+    gui.preferAdbThemePayload = false
   end
 end
 

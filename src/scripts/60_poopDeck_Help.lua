@@ -46,6 +46,17 @@ help.sections = {
       "poopstats monsters [today|week|month|all] - seamonster kills"
     }
   },
+  fishing = {
+    title = "Fishing",
+    rows = {
+      "poopfish - show fishing settings",
+      "poopfish bait - run configured get/bait/cast sequence",
+      "poopfish baitcmd <get command> - set bait retrieval command",
+      "poopfish castdistance <distance> - set cast distance",
+      "poopfish baitcmd default - restore get bass from tank",
+      "poopfish castdistance default - restore medium cast distance"
+    }
+  },
   gui = {
     title = "GUI",
     rows = {
@@ -72,6 +83,7 @@ function help.showSplash()
   poopDeck.output.status("poopDeck " .. poopDeck.version, {
     "poopsail - sailing commands",
     "poopmonster - seamonster commands",
+    "poopfish - fishing settings",
     "poopstats - catch and kill stats",
     "poopgui - GUI position and size",
     "poopfull - all commands",
@@ -83,6 +95,7 @@ function help.showFull()
   help.showSplash()
   help.showSection("sailing")
   help.showSection("seamonsters")
+  help.showSection("fishing")
   help.showSection("stats")
   help.showSection("gui")
 end

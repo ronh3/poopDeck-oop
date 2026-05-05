@@ -14,7 +14,9 @@ config.defaults = {
   guiWidth = "720px",
   guiHeight = "360px",
   guiRestoreLayout = true,
-  guiTheme = "agnosticdb"
+  guiTheme = "agnosticdb",
+  baitCommand = "get bass from tank",
+  castDistance = "medium"
 }
 config.data = config.data or {}
 
@@ -90,6 +92,55 @@ function config.setWeapon(weapon)
   end
   config.set("selectedWeapon", weapon)
   config.save()
+  return true
+end
+
+function config.setBaitCommand(command)
+  local value = tostring(command or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if value == "" then
+    if poopDeck.output then
+      poopDeck.output.bad("Use: poopfish baitcmd <get command>")
+    end
+    return false
+  end
+
+  if value:lower() == "default" then
+    value = config.defaults.baitCommand
+  end
+
+  config.set("baitCommand", value)
+  config.save()
+  if poopDeck.output then
+    poopDeck.output.good("Fishing bait get command set to: " .. value)
+  end
+  return true
+end
+
+function config.setCastDistance(distance)
+  local value = tostring(distance or ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
+  if value == "" then
+    if poopDeck.output then
+      poopDeck.output.bad("Use: poopfish castdistance <distance>")
+    end
+    return false
+  end
+
+  if value == "default" then
+    value = config.defaults.castDistance
+  end
+
+  if not value:match("^[%w_-]+$") then
+    if poopDeck.output then
+      poopDeck.output.bad("Cast distance must be one word, such as short, medium, or long")
+    end
+    return false
+  end
+
+  config.set("castDistance", value)
+  config.save()
+  if poopDeck.output then
+    poopDeck.output.good("Fishing cast distance set to: " .. value)
+  end
   return true
 end
 

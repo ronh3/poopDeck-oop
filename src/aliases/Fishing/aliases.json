@@ -1,0 +1,9 @@
+[
+  {
+    "name": "poopDeck Fishing",
+    "isActive": "yes",
+    "regex": "^poopfish(?:\\s+(.+))?$",
+    "script": "",
+    "isFolder": "no"
+  }
+]

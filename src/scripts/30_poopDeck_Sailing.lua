@@ -389,9 +389,7 @@ function sailing.setSpeed(speed)
 end
 
 function sailing.repairAll()
-  ship.repairingSails = true
-  ship.repairingHull = true
-  poopDeck.refreshGui()
+  ship.repairPending = "all"
   poopDeck.safeSend("ship repair all")
 end
 
@@ -588,29 +586,54 @@ function sailing.parseRepairLine(rawLine)
   end
 
   if line:match("^You order your crew to begin repairing the ship's hull%.$") then
-    ship.repairingHull = true
+    ship.repairPending = "hull"
   elseif line:match("^You order your crew to begin repairing the ship's sails%.$") then
-    ship.repairingSails = true
+    ship.repairPending = "sails"
   elseif line:match("^Your crew begins to mend your sails and repair your hull%.$") then
     ship.repairingSails = true
     ship.repairingHull = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew starts to mend your sails and repair your hull%.$") then
+    ship.repairingSails = true
+    ship.repairingHull = true
+    ship.repairPending = nil
   elseif line:match("^Your crew begins to mend the sails%.") then
     ship.repairingSails = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew starts to mend the sails%.") then
+    ship.repairingSails = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew begins to repair the ship's sails%.") then
+    ship.repairingSails = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew starts repairing the ship's sails%.") then
+    ship.repairingSails = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew begins to repair the ship's hull%.") then
+    ship.repairingHull = true
+    ship.repairPending = nil
+  elseif line:match("^Your crew starts repairing the ship's hull%.") then
+    ship.repairingHull = true
+    ship.repairPending = nil
   elseif line:match("^It was already busy repairing your hull%.$") then
     ship.repairingHull = true
+    ship.repairPending = nil
   elseif line:match("^Your crew ceases all repair activity%.$") then
     ship.repairingSails = false
     ship.repairingHull = false
+    ship.repairPending = nil
   else
     local sailHealth = line:match("^Sail repair continues%. The sails are now at (%d+)%% health%.$")
     if sailHealth then
       ship.repairingSails = true
+      ship.repairPending = nil
       ship.sailHealth = tonumber(sailHealth) or ship.sailHealth
     end
 
     local hullHealth = line:match("^Hull repair continues%. The hull is now at (%d+)%% health%.$")
     if hullHealth then
       ship.repairingHull = true
+      ship.repairPending = nil
       ship.hullHealth = tonumber(hullHealth) or ship.hullHealth
     end
 

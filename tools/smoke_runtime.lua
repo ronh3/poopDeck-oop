@@ -321,13 +321,26 @@ assertEqual(poopDeck.state.ship.hasFires, true, "fire line should mark ship fire
 poopDeck.sailing.parseShipInfoLine("Fires:         No.")
 assertEqual(poopDeck.state.ship.hasFires, false, "ship info should clear fire state")
 
+poopDeck.state.ship.repairingHull = nil
+poopDeck.state.ship.repairingSails = nil
+reset()
+poopDeck.sailing.repairAll()
+assertSent({"ship repair all"})
+assertEqual(poopDeck.state.ship.repairingHull, nil, "repair alias should not mark hull active before confirmation")
+assertEqual(poopDeck.state.ship.repairingSails, nil, "repair alias should not mark sails active before confirmation")
 poopDeck.sailing.parseRepairLine("You order your crew to begin repairing the ship's hull.")
-assertEqual(poopDeck.state.ship.repairingHull, true, "hull repair should be active")
+assertEqual(poopDeck.state.ship.repairingHull, nil, "hull repair order should not mark repair active")
+assertEqual(poopDeck.state.ship.repairPending, "hull", "hull repair order should track pending intent")
+poopDeck.sailing.parseRepairLine("Your crew starts repairing the ship's hull.")
+assertEqual(poopDeck.state.ship.repairingHull, true, "hull repair start should be active")
 assertEqual(poopDeck.state.ship.repairingSails, nil, "sail repair should not be active yet")
 poopDeck.sailing.parseRepairLine("Hull repair continues. The hull is now at 90% health.")
 assertEqual(poopDeck.state.ship.hullHealth, 90, "repair line should update hull health")
 poopDeck.sailing.parseRepairLine("You order your crew to begin repairing the ship's sails.")
-assertEqual(poopDeck.state.ship.repairingSails, true, "sail repair should be active")
+assertEqual(poopDeck.state.ship.repairingSails, nil, "sail repair order should not mark repair active")
+assertEqual(poopDeck.state.ship.repairPending, "sails", "sail repair order should track pending intent")
+poopDeck.sailing.parseRepairLine("Your crew starts repairing the ship's sails.")
+assertEqual(poopDeck.state.ship.repairingSails, true, "sail repair start should be active")
 poopDeck.sailing.parseRepairLine("Your crew ceases all repair activity.")
 assertEqual(poopDeck.state.ship.repairingHull, false, "repair none should stop hull repair")
 assertEqual(poopDeck.state.ship.repairingSails, false, "repair none should stop sail repair")
@@ -357,7 +370,7 @@ assertEqual(poopDeck.gui.window.dockPosition, "floating", "gui userwindow should
 assertEqual(poopDeck.gui.window.autoDock, false, "gui userwindow should not auto-dock by default")
 assert(poopDeck.gui.labels.backdrop ~= nil, "gui should create a full-window themed backdrop")
 assert(poopDeck.gui.labels.backdrop.style:match("#172033") ~= nil, "gui backdrop should fill empty restored-window space")
-assert(poopDeck.gui.labels.backdrop.style:match("#cd853f") ~= nil, "gui backdrop should keep the theme border")
+assert(poopDeck.gui.labels.backdrop.style:match("border:%s*0") ~= nil, "gui backdrop should not double the outer frame border")
 assert(poopDeck.gui.labels.header ~= nil, "gui should create header label")
 assert(poopDeck.gui.labels.header.text:match("poopDeck:") == nil, "gui header should not duplicate window title/version")
 assert(poopDeck.gui.labels.shipLine1.style:match("border%-bottom") == nil, "gui data rows should not draw dark divider lines")
@@ -365,6 +378,9 @@ assert(poopDeck.gui.labels.shipLine1 ~= nil, "gui should create ship line")
 assert(poopDeck.gui.labels.shipSea ~= nil, "gui should create sea label")
 assert(poopDeck.gui.labels.fishingLine2 ~= nil, "gui should create caught fish line")
 assert(poopDeck.gui.labels.eventsTitle == nil, "gui should not create squished recent event section")
+assert(poopDeck.gui.labels.shipTitle.text:match("└") == nil, "ship section should not draw text-frame glyphs inside styled borders")
+assert(poopDeck.gui.labels.combatTitle.text == "Seamonsters", "seamonster section should use clean section bar text")
+assert(poopDeck.gui.labels.fishingTitle.text == "Fishing", "fishing section should use clean section bar text")
 assert(poopDeck.gui.labels.header.text:match("Auto:") ~= nil, "gui header should use label colons")
 assert(poopDeck.gui.labels.shipLine1.text:match("Course:") ~= nil, "ship course should use label colon")
 assert(poopDeck.gui.labels.shipLine1.text:match("Row:") ~= nil, "row should be on course line")
@@ -383,6 +399,16 @@ assert(poopDeck.gui.labels.firingButton ~= nil, "gui should create a firing stat
 assert(poopDeck.gui.labels.combatLine2.text:match("Firing:") == nil, "gui should not duplicate firing status in mini text")
 assert(poopDeck.gui.labels.combatLine2.text:match("Range:") ~= nil, "gui should keep compact range text")
 assert(poopDeck.gui.labels.firingButton.style:match("#22304a") ~= nil, "firing status should be unlit while idle")
+poopDeck.state.combat.mode = "manual"
+poopDeck.gui.update()
+assert(type(_G[poopDeck.gui.labels.autoButton.callback]) == "function", "gui auto button should register a global click wrapper")
+_G[poopDeck.gui.labels.autoButton.callback]()
+assertEqual(poopDeck.state.combat.mode, "automatic", "gui auto button click should toggle auto mode")
+assert(poopDeck.gui.labels.autoButton.style:match("#1d4ed8") ~= nil, "gui auto button should highlight after click")
+_G[poopDeck.gui.labels.onagerButton.callback]()
+assertEqual(poopDeck.state.combat.selectedWeapon, "onager", "gui weapon button click should set selected weapon")
+assert(poopDeck.gui.labels.onagerButton.style:match("#1d4ed8") ~= nil, "gui selected weapon should highlight after click")
+assert(poopDeck.gui.labels.ballistaButton.style:match("#22304a") ~= nil, "gui unselected weapon should unhighlight after click")
 poopDeck.state.combat.firing = true
 poopDeck.state.combat.outOfRange = false
 poopDeck.gui.update()
@@ -428,6 +454,12 @@ poopDeck.gui.setTheme("adb")
 assertEqual(poopDeck.config.get("guiTheme"), "agnosticdb", "gui theme adb alias should store agnosticdb")
 assertEqual(poopDeck.gui.currentTheme.name, "agnosticdb", "gui should use adb theme source when available")
 assertEqual(poopDeck.gui.currentTheme.accent, "#ff0000", "gui should translate adb accent color to css")
+assert(poopDeck.gui.currentTheme.panel ~= "#172033", "adb theme should derive a panel color instead of keeping built-in slate")
+assertEqual(poopDeck.gui.currentTheme.background, "#1f0000", "adb background should derive primarily from accent")
+assertEqual(poopDeck.gui.currentTheme.panel, "#4b0b05", "adb panel should derive primarily from accent")
+assertEqual(poopDeck.gui.currentTheme.section, "#6e1008", "adb section should derive primarily from accent")
+assert(poopDeck.gui.root.style:match(poopDeck.gui.currentTheme.panel) ~= nil, "gui root should use adb-derived panel background")
+assert(poopDeck.gui.labels.backdrop.style:match(poopDeck.gui.currentTheme.panel) ~= nil, "gui backdrop should use adb-derived panel background")
 assert(poopDeck.gui.labels.header.style:match("#cd853f") ~= nil, "gui section style should use adb border color")
 assert(poopDeck.gui.labels.header.cechoText:match("<red>") ~= nil, "gui labels should use adb color tags for text")
 assert(poopDeck.gui.labels.autoButton.style:match("#cd853f") ~= nil, "gui buttons should keep adb-colored border framing")
@@ -447,6 +479,7 @@ assert(rawOutput:match("|Fish%s+| Today|") ~= nil, "raw table output should pres
 poopDeck.gui.setTheme("runewarden")
 assertEqual(poopDeck.config.get("guiTheme"), "runewarden", "explicit runewarden theme should store before adb event")
 local preThemeWindow = poopDeck.gui.window
+local preEventPanel = poopDeck.gui.currentTheme.panel
 poopDeck.gui.registerThemeHandlers()
 raiseTestEvent("agnosticdb.theme.changed", {
   event = "agnosticdb.theme.changed",
@@ -465,8 +498,23 @@ raiseTestEvent("agnosticdb.theme.changed", {
 assertEqual(poopDeck.config.get("guiTheme"), "agnosticdb", "adb theme event should switch gui back to adb theme source")
 assertEqual(poopDeck.gui.currentTheme.label, "Mhaldor", "gui should adopt adb theme event label")
 assert(poopDeck.gui.window ~= preThemeWindow, "adb theme event should redraw the gui window")
+assert(poopDeck.gui.currentTheme.panel ~= preEventPanel, "adb theme event should update derived gui surface colors")
+assert(poopDeck.gui.root.style:match(poopDeck.gui.currentTheme.panel) ~= nil, "adb theme event should repaint the root panel background")
 assert(poopDeck.gui.labels.header.style:match("#2f4f4f") ~= nil, "adb theme event should update border color from payload")
 assert(poopDeck.gui.labels.header.cechoText:match("<red>") ~= nil, "adb theme event should update label color tags")
+agnosticdb.ui.theme_tags = function()
+  return {
+    accent = "<forest_green>",
+    border = "<saddle_brown>",
+    text = "<honeydew>",
+    muted = "<tan>",
+    reset = "<reset>"
+  }
+end
+poopDeck.gui.setTheme("adb")
+assertEqual(poopDeck.gui.currentTheme.label, "agnosticDB", "live adb tags should clear stale event labels")
+assertEqual(poopDeck.gui.currentTheme.accent, "#228b22", "live adb tags should override stale cached event payload")
+assert(poopDeck.gui.labels.header.style:match("#8b4513") ~= nil, "live adb tags should repaint borders after stale payload")
 poopDeck.gui.unregisterThemeHandlers()
 agnosticdb = nil
 poopDeck.gui.setTheme("runewarden")
@@ -481,18 +529,64 @@ poopDeck.gui.teardown()
 assert(poopDeck.gui.window == nil, "gui teardown should clear window")
 
 reset()
+poopDeck.config.set("baitCommand", "get bass from tank")
+poopDeck.config.set("castDistance", "medium")
 poopDeck.fishing.castAgain()
-assertSent({"queue addclearfull free fcast"})
-assertEqual(poopDeck.state.fishing.status, "Casting", "fcast should set casting state")
+assertSent({
+  "queue addclearfull free get bass from tank",
+  "queue add free bait hook with bass",
+  "queue add free cast line medium"
+})
+assertEqual(poopDeck.state.fishing.status, "Casting", "bait command should set casting state")
 poopDeck.fishing.parseCastSuccess("You cock back your arm and smoothly cast your line over the railing into the nearby water. You judge the cast at about 71 feet.")
 assertEqual(poopDeck.state.fishing.status, "Waiting", "cast success should set waiting state")
 assertEqual(poopDeck.state.fishing.hooked, false, "cast success should clear hooked state")
 assertEqual(poopDeck.state.fishing.lineFeetLeft, 71, "cast success should set initial line distance")
 
 reset()
+poopDeck.config.setBaitCommand("get shrimp from bucket")
+poopDeck.config.setCastDistance("long")
+poopDeck.fishing.castAgain()
+assertSent({
+  "queue addclearfull free get shrimp from bucket",
+  "queue add free bait hook with shrimp",
+  "queue add free cast line long"
+})
+poopDeck.config.setBaitCommand("default")
+poopDeck.config.setCastDistance("default")
+assertEqual(poopDeck.config.get("baitCommand"), "get bass from tank", "bait command default should restore bass from tank")
+assertEqual(poopDeck.config.get("castDistance"), "medium", "cast distance default should restore medium")
+reset()
+poopDeck.fishing.command("bait")
+assertSent({
+  "queue addclearfull free get bass from tank",
+  "queue add free bait hook with bass",
+  "queue add free cast line medium"
+})
+poopDeck.fishing.command("baitcmd get rock bass from tank")
+assertEqual(poopDeck.config.get("baitCommand"), "get rock bass from tank", "poopfish should set bait command")
+poopDeck.fishing.command("castdistance short")
+assertEqual(poopDeck.config.get("castDistance"), "short", "poopfish should set cast distance")
+reset()
+poopDeck.fishing.command("bait")
+assertSent({
+  "queue addclearfull free get rock bass from tank",
+  "queue add free bait hook with rock bass",
+  "queue add free cast line short"
+})
+poopDeck.fishing.onBaited()
+assertSent({
+  "queue addclearfull free get rock bass from tank",
+  "queue add free bait hook with rock bass",
+  "queue add free cast line short"
+})
+
+reset()
 poopDeck.fishing.castMedium()
-assertSent({"queue addclearfull free cast line medium"})
+assertSent({"queue addclearfull free cast line short"})
 assertEqual(poopDeck.state.fishing.status, "Casting", "medium cast should set casting state")
+poopDeck.config.setBaitCommand("default")
+poopDeck.config.setCastDistance("default")
 
 reset()
 resetTimers()
@@ -512,6 +606,16 @@ poopDeck.fishing.showSize("an enormous")
 runTimers()
 assertSent({"tease line"})
 assertEqual(poopDeck.state.fishing.status, "Hooked", "tease idle timer should not overwrite hook state")
+
+reset()
+resetTimers()
+poopDeck.fishing.teaseNow()
+assertSent({"tease line"})
+assertEqual(poopDeck.state.fishing.status, "Teasing", "manual tease should set teasing state")
+assert(#timers == 1, "manual tease should schedule idle reset")
+assertEqual(timers[1].delay, 2.1, "manual tease idle reset should account for immediate send")
+runTimers()
+assertEqual(poopDeck.state.fishing.status, "Idle", "manual tease idle timer should return to idle")
 
 reset()
 resetTimers()
@@ -546,26 +650,72 @@ assertEqual(poopDeck.state.fishing.caughtOunces, 7, "caught fish ounces should b
 reset()
 poopDeck.fishing.showSize("a large")
 poopDeck.fishing.onLineDistance("150")
+poopDeck.config.setBaitCommand("get squid from tank")
+poopDeck.config.setCastDistance("far")
 poopDeck.fishing.onLost()
-assertSent({"queue addclearfull free fcast"})
+assertSent({
+  "queue addclearfull free get squid from tank",
+  "queue add free bait hook with squid",
+  "queue add free cast line far"
+})
 assertEqual(poopDeck.state.fishing.status, "Casting", "lost fish should restart casting")
 assertEqual(poopDeck.state.fishing.hooked, false, "lost fish should clear hooked")
 assertEqual(poopDeck.state.fishing.size, nil, "lost fish should clear size")
 assertEqual(poopDeck.state.fishing.lineFeetLeft, nil, "lost fish should clear line distance")
+poopDeck.config.setBaitCommand("default")
+poopDeck.config.setCastDistance("default")
 
 poopDeck.gui.build()
 poopDeck.fishing.showSize("an enormous")
 poopDeck.fishing.onLineDistance("367")
+poopDeck.gui.fishingReel()
 assert(poopDeck.gui.labels.fishingLine1.text:match("Status: Reeling") ~= nil, "gui should title-case fishing state")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Hooked: Yes") ~= nil, "gui should title-case hooked value")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Size: Enormous") ~= nil, "gui should title-case size value")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Line: 367 ft") ~= nil, "gui should show line distance")
 assert(poopDeck.gui.labels.fishingLine1.text:match("timers") == nil, "gui should not show timers")
+assertEqual(poopDeck.gui.labels.fishCastButton.text, "Bait", "gui should label fcast by its fishing role")
+assertEqual(poopDeck.gui.labels.fishMediumButton.text, "Cast", "gui should use concise cast button text")
+assertEqual(poopDeck.gui.labels.fishIdleButton.text, "Idle", "gui should include an idle fishing button")
+assertEqual(poopDeck.gui.labels.fishReelButton.text, "Reel", "gui should use concise reel button text")
+assert(poopDeck.gui.labels.fishReelButton.style:match("#1d4ed8") ~= nil, "gui should highlight reel while hooked")
+assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui should not highlight tease while hooked")
+local preIdleStatus = poopDeck.state.fishing.status
+local preIdleHooked = poopDeck.state.fishing.hooked
+local preIdleLine = poopDeck.state.fishing.lineFeetLeft
+reset()
+_G[poopDeck.gui.labels.fishIdleButton.callback]()
+assertSent({})
+assertEqual(poopDeck.state.fishing.status, preIdleStatus, "gui idle indicator click should not change fishing status")
+assertEqual(poopDeck.state.fishing.hooked, preIdleHooked, "gui idle indicator click should not change hooked state")
+assertEqual(poopDeck.state.fishing.lineFeetLeft, preIdleLine, "gui idle indicator click should not change line distance")
+assert(poopDeck.gui.labels.fishReelButton.style:match("#1d4ed8") ~= nil, "gui idle indicator click should not clear reel highlight")
+poopDeck.fishing.idle()
+assert(poopDeck.gui.labels.fishIdleButton.style:match("#1d4ed8") ~= nil, "gui should highlight idle when fishing state is idle")
+assert(poopDeck.gui.labels.fishReelButton.style:match("#22304a") ~= nil, "gui should unhighlight reel when fishing state is idle")
+poopDeck.fishing.showSize("an enormous")
+poopDeck.fishing.onLineDistance("367")
+poopDeck.gui.fishingReel()
 poopDeck.fishing.parseCaughtLine("With a final tug, you finish reeling in the line and land a redfin tuna weighing 233 pounds and 7 ounces!")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Status: Landed") ~= nil, "caught fish should set landed status")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Hooked: No") ~= nil, "caught fish should clear hooked display")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Line: %-") ~= nil, "caught fish should clear line distance display")
 assert(poopDeck.gui.labels.fishingLine2.text == "Caught: 233lb 7oz Redfin Tuna", "gui should show caught fish summary")
+assert(poopDeck.gui.labels.fishCastButton.style:match("#22304a") ~= nil, "gui should clear bait highlight after landing a fish")
+assert(poopDeck.gui.labels.fishReelButton.style:match("#22304a") ~= nil, "gui should unhighlight reel after landing a fish")
+poopDeck.fishing.parseCastSuccess("You cock back your arm and smoothly cast your line over the railing into the nearby water. You judge the cast at about 71 feet.")
+assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui should not highlight tease until fishing state is teasing")
+local preTeaseStatus = poopDeck.state.fishing.status
+reset()
+_G[poopDeck.gui.labels.fishTeaseButton.callback]()
+assertSent({})
+assertEqual(poopDeck.state.fishing.status, preTeaseStatus, "gui tease indicator click should not change fishing status")
+assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui tease indicator click should not highlight tease")
+poopDeck.fishing.teaseSoon()
+assert(poopDeck.gui.labels.fishTeaseButton.style:match("#1d4ed8") ~= nil, "gui should highlight tease when fishing state is teasing")
+_G[poopDeck.gui.labels.fishCastButton.callback]()
+assert(poopDeck.gui.labels.fishCastButton.style:match("#1d4ed8") ~= nil, "gui should highlight bait after click")
+assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui should unhighlight tease after bait click")
 poopDeck.gui.teardown()
 
 poopDeck.stats.memory = poopDeck.stats.emptyData()
@@ -700,6 +850,7 @@ poopDeck.combat.onWeaponFired()
 resetTimers()
 
 reset()
+poopDeck.state.combat.mode = "manual"
 poopDeck.combat.onOutOfRange()
 assertSent({"curing on"})
 assert(enabled["Ship Moved Lets Try Again"] ~= true, "range retry should not enable in manual mode")
