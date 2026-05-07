@@ -51,6 +51,8 @@ Source files live under `src/`; generated `build/` output should not be edited.
 | Command | Description |
 | --- | --- |
 | `poopgui` | Shows GUI settings such as position, size, restore-layout mode, and theme source. |
+| `poopgui on` | Enables the GUI window. |
+| `poopgui off` | Disables and hides the GUI window until re-enabled. |
 | `poopgui theme adb` | Uses the active agnosticDB theme when agnosticDB is installed. |
 | `poopgui theme runewarden` | Uses poopDeck's built-in Runewarden-style theme. |
 | `poopgui theme default` | Uses poopDeck's neutral built-in theme. |
@@ -60,7 +62,7 @@ Source files live under `src/`; generated `build/` output should not be edited.
 | `poopgui size <width> <height>` | Sets the GUI size, for example `poopgui size 720 360`. |
 | `poopgui reset` | Restores default GUI position, size, and layout restore settings. |
 
-The GUI automatically appears when poopDeck detects that you board a ship and hides when you disembark.
+The GUI automatically appears when poopDeck detects that you board a ship and hides when you disembark, unless disabled with `poopgui off`.
 
 ## Sailing Commands
 

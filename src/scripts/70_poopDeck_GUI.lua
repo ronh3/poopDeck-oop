@@ -161,6 +161,10 @@ local function configValue(key, fallback)
   return fallback
 end
 
+function gui.isEnabled()
+  return configValue("guiEnabled", true) == true
+end
+
 local function cssColor(value, fallback)
   local text = trim(value)
   text = text:gsub("^<", ""):gsub(">$", ""):gsub("^ansi_", ""):gsub("^ansi", "")
@@ -627,6 +631,11 @@ function gui.teardown()
 end
 
 function gui.build()
+  if not gui.isEnabled() then
+    gui.teardown()
+    return false
+  end
+
   gui.teardown()
   rebuildStyles()
 
@@ -679,6 +688,7 @@ function gui.build()
   else
     gui.hide()
   end
+  return true
 end
 
 function gui.update()
@@ -780,15 +790,19 @@ function gui.update()
 end
 
 function gui.show()
+  if not gui.isEnabled() then
+    gui.hide()
+    return false
+  end
   if not gui.window then
-    gui.build()
-    return
+    return gui.build()
   end
   if gui.window.show then
     gui.window:show()
   end
   gui.visible = true
   gui.update()
+  return true
 end
 
 function gui.hide()
@@ -849,7 +863,7 @@ function gui.noop()
 end
 
 function gui.rebuild()
-  local shouldShow = gui.visible or (poopDeck.state.ship or {}).isAboard
+  local shouldShow = gui.isEnabled() and (gui.visible or (poopDeck.state.ship or {}).isAboard)
   gui.build()
   if shouldShow then
     gui.show()
@@ -906,16 +920,35 @@ function gui.showSettings()
   local spec = windowSpec()
   local theme = currentTheme()
   poopDeck.output.status("poopDeck GUI", {
+    "Enabled: " .. tostring(gui.isEnabled()),
     "Restore layout: " .. tostring(spec.restoreLayout),
     "Theme: " .. tostring(configValue("guiTheme", "agnosticdb")) .. " (" .. tostring(theme.label or theme.name) .. ")",
     "Position: " .. tostring(spec.x) .. ", " .. tostring(spec.y),
     "Size: " .. tostring(spec.width) .. " x " .. tostring(spec.height),
+    "poopgui on|off - enable or disable the GUI window",
     "poopgui theme adb|runewarden|default - set GUI theme source",
     "poopgui restore on|off - use Mudlet's saved window layout",
     "poopgui pos <x> <y> - set spawn position",
     "poopgui size <width> <height> - set spawn size",
     "poopgui reset - restore default position and size"
   })
+end
+
+function gui.setEnabled(enabled)
+  local value = enabled == true
+  poopDeck.config.set("guiEnabled", value)
+  poopDeck.config.save()
+  if value then
+    if (poopDeck.state.ship or {}).isAboard then
+      gui.show()
+    else
+      gui.build()
+    end
+  else
+    gui.teardown()
+  end
+  poopDeck.output.good("GUI " .. (value and "enabled" or "disabled"))
+  return true
 end
 
 function gui.setPosition(x, y)
@@ -994,6 +1027,16 @@ function gui.command(args)
   local command, rest = input:match("^(%S+)%s*(.-)$")
   command = tostring(command or ""):lower()
   rest = trim(rest)
+
+  if command == "on" or command == "show" or command == "enable" or command == "enabled" then
+    gui.setEnabled(true)
+    return
+  end
+
+  if command == "off" or command == "hide" or command == "disable" or command == "disabled" then
+    gui.setEnabled(false)
+    return
+  end
 
   if command == "pos" or command == "position" then
     local x, y = rest:match("^(%S+)%s+(%S+)$")

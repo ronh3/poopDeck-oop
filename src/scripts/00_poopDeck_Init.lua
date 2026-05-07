@@ -1,6 +1,6 @@
 poopDeck = poopDeck or {}
 
-poopDeck.version = "1.0.15"
+poopDeck.version = "1.0.16"
 poopDeck.packageName = "poopDeck"
 
 poopDeck.state = poopDeck.state or {}
@@ -52,7 +52,8 @@ function poopDeck.onLoad()
   if poopDeck.gui and type(poopDeck.gui.registerThemeHandlers) == "function" then
     poopDeck.gui.registerThemeHandlers()
   end
-  if poopDeck.gui and type(poopDeck.gui.build) == "function" then
+  if poopDeck.gui and type(poopDeck.gui.build) == "function"
+    and (type(poopDeck.gui.isEnabled) ~= "function" or poopDeck.gui.isEnabled()) then
     poopDeck.gui.build()
   end
   if poopDeck.output and poopDeck.output.info then

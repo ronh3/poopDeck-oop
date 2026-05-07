@@ -62,6 +62,7 @@ help.sections = {
     title = "GUI",
     rows = {
       "poopgui - show GUI position and size",
+      "poopgui on|off - enable or disable the GUI window",
       "poopgui theme adb|runewarden|default - set GUI theme source",
       "poopgui restore on|off - use Mudlet's saved UserWindow layout",
       "poopgui pos <x> <y> - set spawn position",
