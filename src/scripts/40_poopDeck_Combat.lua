@@ -44,6 +44,7 @@ state.firing = state.firing or false
 state.outOfRange = state.outOfRange or false
 state.shots = state.shots or 0
 state.firedSpider = state.firedSpider or false
+state.onagerStrategy = state.onagerStrategy or poopDeck.config.get("onagerStrategy")
 state.session = state.session or 0
 state.timers = state.timers or {}
 
@@ -89,6 +90,25 @@ function combat.stopSession()
   return state.session
 end
 
+local function onagerCommands(strategy)
+  if strategy == "spider" then
+    return {"maintain hull", "load onager with spidershot", "fire onager at seamonster"}
+  end
+  if strategy == "star" then
+    return {"maintain hull", "load onager with starshot", "fire onager at seamonster"}
+  end
+  if state.firedSpider then
+    state.firedSpider = false
+    return {"maintain hull", "load onager with starshot", "fire onager at seamonster"}
+  end
+  state.firedSpider = true
+  return {"maintain hull", "load onager with spidershot", "fire onager at seamonster"}
+end
+
+local function selectedOnagerStrategy()
+  return state.onagerStrategy or poopDeck.config.get("onagerStrategy") or "alternate"
+end
+
 local function weaponCommands(weapon)
   if weapon == "ballista" then
     return {"maintain hull", "load ballista with dart", "fire ballista at seamonster"}
@@ -97,14 +117,18 @@ local function weaponCommands(weapon)
     return {"maintain hull", "load thrower with disc", "fire thrower at seamonster"}
   end
   if weapon == "onager" then
-    if state.firedSpider then
-      state.firedSpider = false
-      return {"maintain hull", "load onager with starshot", "fire onager at seamonster"}
-    end
-    state.firedSpider = true
-    return {"maintain hull", "load onager with spidershot", "fire onager at seamonster"}
+    return onagerCommands(selectedOnagerStrategy())
   end
   return nil
+end
+
+local function alternatingOnagerCommands()
+  if state.firedSpider then
+    state.firedSpider = false
+    return {"maintain hull", "load onager with starshot", "fire onager at seamonster"}
+  end
+  state.firedSpider = true
+  return {"maintain hull", "load onager with spidershot", "fire onager at seamonster"}
 end
 
 local function ammoCommands(ammo)
@@ -118,7 +142,7 @@ local function ammoCommands(ammo)
     d = {"maintain hull", "load thrower with disc", "fire thrower at seamonster"}
   }
   if ammo == "o" then
-    return weaponCommands("onager")
+    return alternatingOnagerCommands()
   end
   return commands[ammo]
 end
@@ -167,6 +191,16 @@ function combat.setWeapon(weapon)
   if poopDeck.config.setWeapon(weapon) then
     state.selectedWeapon = weapon
     poopDeck.output.good("Weapon set to " .. weapon)
+    refreshGui()
+  end
+end
+
+function combat.setOnagerStrategy(strategy)
+  local value = poopDeck.config.setOnagerStrategy(strategy)
+  if value then
+    state.onagerStrategy = value
+    state.firedSpider = false
+    poopDeck.output.good("Onager strategy set to " .. value)
     refreshGui()
   end
 end

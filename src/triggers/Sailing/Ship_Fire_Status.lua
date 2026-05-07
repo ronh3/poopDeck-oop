@@ -1,1 +1,1 @@
-poopDeck.sailing.onShipFire(matches[1] or line)
+poopDeck.sailing.parseFireLine(matches[1] or line)

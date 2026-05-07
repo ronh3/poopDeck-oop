@@ -28,6 +28,13 @@
     "isFolder": "no"
   },
   {
+    "name": "Set Strategy",
+    "isActive": "yes",
+    "regex": "^seastrategy\\s?(\\S+)$",
+    "script": "",
+    "isFolder": "no"
+  },
+  {
     "name": "Stop Combat",
     "isActive": "yes",
     "regex": "^seastop$",

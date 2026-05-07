@@ -651,15 +651,21 @@ function sailing.parseRepairLine(rawLine)
   poopDeck.refreshGui()
 end
 
-function sailing.onShipFire(rawLine)
+function sailing.parseFireLine(rawLine)
   local line = trim(rawLine)
   if line == "" then
     return
   end
 
-  ship.hasFires = true
+  if line:match("^A cool rain suffuses the surroundings%.$") then
+    ship.hasFires = false
+  else
+    ship.hasFires = true
+  end
   poopDeck.refreshGui()
 end
+
+sailing.onShipFire = sailing.parseFireLine
 
 function sailing.onBoarded()
   ship.isAboard = true

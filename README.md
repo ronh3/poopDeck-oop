@@ -104,6 +104,9 @@ poopDeck also parses ship prompts and `SHIP INFO` output to keep ship state curr
 | `seaweapon ballista` | Selects ballista for automatic seamonster firing. |
 | `seaweapon onager` | Selects onager for automatic seamonster firing. |
 | `seaweapon thrower` | Selects thrower for automatic seamonster firing. |
+| `seastrategy alternate` | Sets automatic onager fire to alternate spidershot and starshot. |
+| `seastrategy spider` | Sets automatic onager fire to always use spidershot. |
+| `seastrategy star` | Sets automatic onager fire to always use starshot. |
 | `autosea on` | Enables automatic seamonster firing. |
 | `autosea off` | Disables automatic seamonster firing and clears active combat state. |
 | `seastop` | Stops seamonster combat timers and clears firing/range state. |

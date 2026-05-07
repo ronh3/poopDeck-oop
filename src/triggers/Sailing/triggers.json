@@ -116,7 +116,8 @@
     "highlightBG": "#ffff00",
     "patterns": [
       {"pattern": "Burning acid rains down upon the ship", "type": "substring"},
-      {"pattern": "setting fire to all that it touches.", "type": "substring"}
+      {"pattern": "setting fire to all that it touches.", "type": "substring"},
+      {"pattern": "A cool rain suffuses the surroundings.", "type": "exactMatch"}
     ],
     "script": ""
   },

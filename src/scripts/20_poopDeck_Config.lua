@@ -8,6 +8,7 @@ config.defaults = {
   sipHealthPercent = 75,
   autoFire = false,
   selectedWeapon = nil,
+  onagerStrategy = "alternate",
   maintainTarget = "hull",
   guiX = "80px",
   guiY = "80px",
@@ -93,6 +94,32 @@ function config.setWeapon(weapon)
   config.set("selectedWeapon", weapon)
   config.save()
   return true
+end
+
+function config.setOnagerStrategy(strategy)
+  local value = tostring(strategy or ""):gsub("^%s+", ""):gsub("%s+$", ""):lower()
+  local aliases = {
+    a = "alternate",
+    alt = "alternate",
+    alternate = "alternate",
+    alternating = "alternate",
+    sp = "spider",
+    spider = "spider",
+    spidershot = "spider",
+    st = "star",
+    star = "star",
+    starshot = "star"
+  }
+  value = aliases[value]
+  if not value then
+    if poopDeck.output then
+      poopDeck.output.bad("Strategy must be alternate, spider, or star")
+    end
+    return false
+  end
+  config.set("onagerStrategy", value)
+  config.save()
+  return value
 end
 
 function config.setBaitCommand(command)

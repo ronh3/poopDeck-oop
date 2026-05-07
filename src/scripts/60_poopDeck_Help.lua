@@ -25,6 +25,7 @@ help.sections = {
     title = "Seamonsters",
     rows = {
       "seaweapon <ballista|onager|thrower> - select auto weapon",
+      "seastrategy <alternate|spider|star> - select auto onager ammo",
       "autosea on|off - toggle automatic fire",
       "seastop - stop seamonster firing and clear range state",
       "poophp <percent> - minimum health for firing",
@@ -114,6 +115,7 @@ function help.shipStatus()
     "active: " .. poopDeck.boolText(combat.active),
     "fire pending: " .. poopDeck.boolText(combat.firePending),
     "weapon: " .. tostring(combat.selectedWeapon or poopDeck.config.get("selectedWeapon") or "none"),
+    "onager strategy: " .. tostring(combat.onagerStrategy or poopDeck.config.get("onagerStrategy") or "alternate"),
     "firing: " .. poopDeck.boolText(combat.firing),
     "out of range: " .. poopDeck.boolText(combat.outOfRange)
   })

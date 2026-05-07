@@ -476,7 +476,7 @@ local function fishingButtonStates(fishing)
   return {
     bait = fishing.lastAction == "bait",
     cast = fishing.lastAction == "cast",
-    idle = fishing.lastAction == "idle" or (fishing.lastAction == nil and fishingStatusIs(fishing, "idle")),
+    idle = fishing.lastAction == "idle" or (fishing.lastAction == nil and fishingStatusIs(fishing, "idle", "waiting")),
     tease = fishing.lastAction == "tease",
     reel = fishing.lastAction == "reel"
   }
@@ -690,6 +690,7 @@ function gui.update()
   local combat = poopDeck.state.combat or {}
   local fishing = poopDeck.state.fishing or {}
   local weapon = combat.selectedWeapon or (poopDeck.config and poopDeck.config.get and poopDeck.config.get("selectedWeapon")) or "-"
+  local onagerStrategy = combat.onagerStrategy or (poopDeck.config and poopDeck.config.get and poopDeck.config.get("onagerStrategy")) or "alternate"
   local mode = combat.mode or "manual"
 
   setLabel("header", string.format(
@@ -739,9 +740,10 @@ function gui.update()
     titleValue(combat.currentMonster)
   ))
   setLabel("combatLine2", string.format(
-    "Pending: %s | Range: %s",
+    "Pending: %s | Range: %s | Strategy: %s",
     boolText(combat.firePending),
-    combat.outOfRange and "Out" or "Ok"
+    combat.outOfRange and "Out" or "Ok",
+    titleValue(onagerStrategy)
   ))
   setLabelStyle("autoButton", mode == "automatic" and activeButtonStyle or buttonStyle)
   setLabel("autoButton", "Auto")
