@@ -14,6 +14,7 @@ combat.reloadTime = 4
 combat.fiveMinuteWarning = 900
 combat.oneMinuteWarning = 1140
 combat.nextMonsterWarning = 1200
+combat.outOfRangeEchoInterval = 6
 
 combat.monsters = {
   ["a legendary leviathan"] = 60,
@@ -45,6 +46,7 @@ state.outOfRange = state.outOfRange or false
 state.shots = state.shots or 0
 state.firedSpider = state.firedSpider or false
 state.onagerStrategy = state.onagerStrategy or poopDeck.config.get("onagerStrategy")
+state.outOfRangeEchoCount = state.outOfRangeEchoCount or 0
 state.session = state.session or 0
 state.timers = state.timers or {}
 
@@ -70,6 +72,7 @@ end
 
 function combat.startSession()
   state.active = true
+  state.outOfRangeEchoCount = 0
   state.session = (state.session or 0) + 1
   refreshGui()
   return state.session
@@ -81,6 +84,7 @@ function combat.stopSession()
   state.firePending = false
   state.firing = false
   state.outOfRange = false
+  state.outOfRangeEchoCount = 0
   state.currentMonster = nil
   state.shots = 0
   state.session = (state.session or 0) + 1
@@ -88,6 +92,19 @@ function combat.stopSession()
   combat.toggleCuring(true)
   refreshGui()
   return state.session
+end
+
+local function resetOutOfRangeEcho()
+  state.outOfRangeEchoCount = 0
+end
+
+local function shouldEchoOutOfRange()
+  local interval = tonumber(combat.outOfRangeEchoInterval) or 6
+  if interval < 1 then
+    interval = 1
+  end
+  state.outOfRangeEchoCount = (state.outOfRangeEchoCount or 0) + 1
+  return ((state.outOfRangeEchoCount - 1) % interval) == 0
 end
 
 local function onagerCommands(strategy)
@@ -265,6 +282,7 @@ function combat.onFiringStarted()
   state.firePending = false
   state.firing = true
   state.outOfRange = false
+  resetOutOfRangeEcho()
   refreshGui()
 end
 
@@ -273,6 +291,7 @@ function combat.onWeaponFired()
   state.firePending = false
   state.firing = false
   state.outOfRange = false
+  resetOutOfRangeEcho()
   refreshGui()
   if state.mode == "automatic" then
     local session = state.session
@@ -288,6 +307,7 @@ function combat.onOutOfRange()
     state.firePending = false
     state.firing = false
     state.outOfRange = false
+    resetOutOfRangeEcho()
     disableTrigger("Ship Moved Lets Try Again")
     refreshGui()
     return
@@ -298,7 +318,9 @@ function combat.onOutOfRange()
   if state.mode == "automatic" then
     enableTrigger("Ship Moved Lets Try Again")
   end
-  poopDeck.output.bad("OUT OF RANGE")
+  if shouldEchoOutOfRange() then
+    poopDeck.output.bad("OUT OF RANGE")
+  end
   refreshGui()
 end
 

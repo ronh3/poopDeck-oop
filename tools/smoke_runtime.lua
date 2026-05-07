@@ -220,6 +220,16 @@ local function assertEqual(actual, expected, label)
   assert(actual == expected, label .. " expected '" .. tostring(expected) .. "', got '" .. tostring(actual) .. "'")
 end
 
+local function eventCount(text)
+  local count = 0
+  for _, event in ipairs(poopDeck.state.events or {}) do
+    if event.text == text then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 local function killedTimerCount()
   local count = 0
   for _ in pairs(killedTimers) do
@@ -468,6 +478,14 @@ assert(poopDeck.gui.labels.backdrop.style:match(poopDeck.gui.currentTheme.panel)
 assert(poopDeck.gui.labels.header.style:match("#cd853f") ~= nil, "gui section style should use adb border color")
 assert(poopDeck.gui.labels.header.cechoText:match("<red>") ~= nil, "gui labels should use adb color tags for text")
 assert(poopDeck.gui.labels.autoButton.style:match("#cd853f") ~= nil, "gui buttons should keep adb-colored border framing")
+agnosticdb.ui.emit_line = function()
+  error("single-line output should not delegate to multi-write emit_line")
+end
+reset()
+poopDeck.output.good("Hooked very large fish")
+assertEqual(#cechoOutput, 1, "single-line adb output should be emitted atomically")
+assert(cechoOutput[1]:match("Hooked very large fish") ~= nil, "single-line adb output should include message")
+assert(cechoOutput[1]:match("╔") ~= nil and cechoOutput[1]:match("╚") ~= nil, "single-line adb output should include complete frame")
 reset()
 poopDeck.output.status("Table Test", {
   "Fish       Today  Biggest",
@@ -908,9 +926,20 @@ reset()
 poopDeck.combat.setAutoMode("on")
 poopDeck.combat.setWeapon("ballista")
 poopDeck.combat.startSession()
+poopDeck.state.events = {}
 poopDeck.combat.onOutOfRange()
 assertSent({"curing on"})
 assert(enabled["Ship Moved Lets Try Again"] == true, "range retry should enable in auto mode")
+assertEqual(eventCount("OUT OF RANGE"), 1, "first out-of-range should echo")
+for _ = 1, 5 do
+  poopDeck.combat.onOutOfRange()
+end
+assertEqual(eventCount("OUT OF RANGE"), 1, "next five out-of-range events should be muted")
+poopDeck.combat.onOutOfRange()
+assertEqual(eventCount("OUT OF RANGE"), 2, "seventh out-of-range event should echo again")
+poopDeck.combat.onFiringStarted()
+poopDeck.combat.onOutOfRange()
+assertEqual(eventCount("OUT OF RANGE"), 3, "successful aiming should reset out-of-range echo throttle")
 
 reset()
 poopDeck.combat.setAutoMode("off")

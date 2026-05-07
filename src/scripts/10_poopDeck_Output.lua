@@ -91,10 +91,10 @@ local function frameLine(theme, left, fill, right, label)
   return border .. left .. string.rep(fill, width) .. right .. reset
 end
 
-local function frameContentLine(theme, text)
+local function frameContentLine(theme, text, bodyTag)
   local width = frameWidth()
   local border = theme.border or "<grey>"
-  local body = theme.text or "<white>"
+  local body = bodyTag or theme.text or "<white>"
   local reset = theme.reset or "<reset>"
   local content = " " .. tostring(text or "") .. " "
   local padding = string.rep(" ", math.max(0, width - visibleLength(content)))
@@ -107,12 +107,32 @@ local function framedStatus(title, rows)
     return false
   end
 
-  cecho("\n" .. frameLine(theme, "╔", "═", "╗") .. "\n")
-  cecho(frameLine(theme, "║", " ", "║", "poopDeck - " .. tostring(title)) .. "\n")
+  local lines = {
+    "",
+    frameLine(theme, "╔", "═", "╗"),
+    frameLine(theme, "║", " ", "║", "poopDeck - " .. tostring(title))
+  }
   for _, row in ipairs(rows or {}) do
-    cecho(frameContentLine(theme, row) .. "\n")
+    lines[#lines + 1] = frameContentLine(theme, row)
   end
-  cecho(frameLine(theme, "╚", "═", "╝") .. "\n")
+  lines[#lines + 1] = frameLine(theme, "╚", "═", "╝")
+  cecho(table.concat(lines, "\n") .. "\n")
+  return true
+end
+
+local function framedLine(text, color)
+  local theme = adbThemeTags()
+  if not theme or type(cecho) ~= "function" then
+    return false
+  end
+
+  local lines = {
+    "",
+    frameLine(theme, "╔", "═", "╗"),
+    frameContentLine(theme, "[poopDeck] " .. tostring(text), colorTag(color)),
+    frameLine(theme, "╚", "═", "╝")
+  }
+  cecho(table.concat(lines, "\n") .. "\n")
   return true
 end
 
@@ -120,9 +140,8 @@ function output.line(text, color)
   local colorName = color or output.colors.info
   output.remember(text, colorName)
   local message = "[poopDeck] " .. tostring(text)
-  local ui = adbUi()
-  if ui and type(ui.emit_line) == "function" then
-    ui.emit_line(colorTag(colorName) .. message .. resetTag(), { prefix = "" })
+  if framedLine(text, colorName) then
+    -- Already emitted as a complete frame above.
   elseif cecho then
     cecho("\n" .. colorTag(colorName) .. message .. resetTag() .. "\n\n")
   else
