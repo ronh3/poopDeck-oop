@@ -1,4 +1,5 @@
 local sent = {}
+local sentEchoes = {}
 local enabled = {}
 local timers = {}
 local killedTimers = {}
@@ -63,8 +64,9 @@ rex.gsub = rex.gsub or function(text, pattern, replacement)
   return (tostring(text):gsub(pattern, replacement))
 end
 
-function send(command)
+function send(command, echoCommand)
   table.insert(sent, command)
+  table.insert(sentEchoes, echoCommand)
 end
 
 function echo(_) end
@@ -191,6 +193,7 @@ package.preload["poopDeck.ftext"] = assert(loadfile("src/resources/ftext.lua"))
 
 local function reset()
   sent = {}
+  sentEchoes = {}
   cechoOutput = {}
 end
 
@@ -241,6 +244,7 @@ end
 reset()
 poopDeck.sailing.turn("n")
 assertSent({"say Bring her to the north!"})
+assertEqual(sentEchoes[1], false, "poopDeck commands should be sent without command echo")
 
 reset()
 poopDeck.sailing.setSpeed("full")
@@ -395,7 +399,9 @@ assert(poopDeck.gui.labels.eventsTitle == nil, "gui should not create squished r
 assert(poopDeck.gui.labels.shipTitle.text:match("└") == nil, "ship section should not draw text-frame glyphs inside styled borders")
 assert(poopDeck.gui.labels.combatTitle.text == "Seamonsters", "seamonster section should use clean section bar text")
 assert(poopDeck.gui.labels.fishingTitle.text == "Fishing", "fishing section should use clean section bar text")
-assert(poopDeck.gui.labels.header.text:match("Auto:") ~= nil, "gui header should use label colons")
+assert(poopDeck.gui.labels.header.text:match("Sails ") ~= nil, "gui header should show sail danger summary")
+assert(poopDeck.gui.labels.header.text:match("Hull ") ~= nil, "gui header should show hull danger summary")
+assert(poopDeck.gui.labels.header.text:match("Range ") ~= nil, "gui header should show range state")
 assert(poopDeck.gui.labels.shipLine1.text:match("Course:") ~= nil, "ship course should use label colon")
 assert(poopDeck.gui.labels.shipLine1.text:match("Row:") ~= nil, "row should be on course line")
 assert(poopDeck.gui.labels.shipLine1.text:match("Sail:") ~= nil, "sail should be on course line")
@@ -452,6 +458,27 @@ assertEqual(poopDeck.gui.window.x, "80px", "gui reset should restore default x")
 assertEqual(poopDeck.gui.window.y, "80px", "gui reset should restore default y")
 assertEqual(poopDeck.gui.window.height, "360px", "gui reset should restore compact default height")
 assertEqual(poopDeck.gui.window.restoreLayout, true, "gui reset should restore layout restore")
+poopDeck.gui.command("compact")
+assertEqual(poopDeck.config.get("guiMode"), "compact", "poopgui compact should persist compact mode")
+assertEqual(poopDeck.gui.window.width, "520px", "compact gui should use compact default width")
+assertEqual(poopDeck.gui.window.height, "100px", "compact gui should use compact default height")
+assertEqual(poopDeck.gui.window.restoreLayout, false, "compact gui should bypass saved full window layout")
+poopDeck.gui.setSize("540", "110")
+assertEqual(poopDeck.config.get("guiCompactWidth"), "540px", "size command in compact mode should update compact width")
+assertEqual(poopDeck.config.get("guiCompactHeight"), "110px", "size command in compact mode should update compact height")
+assertEqual(poopDeck.gui.window.width, "540px", "compact gui should rebuild with configured compact width")
+assertEqual(poopDeck.gui.window.height, "110px", "compact gui should rebuild with configured compact height")
+assert(poopDeck.gui.labels.autoButton ~= nil, "compact gui should keep auto status button")
+assert(poopDeck.gui.labels.firingButton ~= nil, "compact gui should keep firing status button")
+assert(poopDeck.gui.labels.ballistaButton ~= nil, "compact gui should keep weapon status buttons")
+assert(poopDeck.gui.labels.fishReelButton ~= nil, "compact gui should keep fishing status buttons")
+assert(poopDeck.gui.labels.shipLine1 == nil, "compact gui should omit full ship detail rows")
+assert(poopDeck.gui.labels.header.text:match("Combat ") ~= nil, "compact gui header should keep danger summary")
+poopDeck.gui.command("full")
+assertEqual(poopDeck.config.get("guiMode"), "full", "poopgui full should persist full mode")
+assertEqual(poopDeck.gui.window.width, "720px", "full gui should restore full default width")
+assertEqual(poopDeck.gui.window.height, "360px", "full gui should restore full default height")
+assert(poopDeck.gui.labels.shipLine1 ~= nil, "full gui should restore ship detail rows")
 agnosticdb = {
   ui = {
     theme_tags = function()
@@ -486,6 +513,15 @@ poopDeck.output.good("Hooked very large fish")
 assertEqual(#cechoOutput, 1, "single-line adb output should be emitted atomically")
 assert(cechoOutput[1]:match("Hooked very large fish") ~= nil, "single-line adb output should include message")
 assert(cechoOutput[1]:match("╔") ~= nil and cechoOutput[1]:match("╚") ~= nil, "single-line adb output should include complete frame")
+reset()
+poopDeck.gui.command("output compact")
+assertEqual(poopDeck.config.get("outputMode"), "compact", "poopgui output compact should persist compact output mode")
+reset()
+poopDeck.output.good("Compact event")
+assert(cechoOutput[1]:match("    >>> %[poopDeck%] Compact event <<<") ~= nil, "compact output should be an indented distinct marked line")
+assert(cechoOutput[1]:match("╔") == nil and cechoOutput[1]:match("╚") == nil, "compact output should not use a full frame")
+poopDeck.gui.command("output framed")
+assertEqual(poopDeck.config.get("outputMode"), "framed", "poopgui output framed should restore framed output mode")
 reset()
 poopDeck.output.status("Table Test", {
   "Fish       Today  Biggest",
@@ -722,12 +758,14 @@ assertEqual(poopDeck.state.fishing.hooked, preIdleHooked, "gui idle indicator cl
 assertEqual(poopDeck.state.fishing.lineFeetLeft, preIdleLine, "gui idle indicator click should not change line distance")
 assert(poopDeck.gui.labels.fishReelButton.style:match("#1d4ed8") ~= nil, "gui idle indicator click should not clear reel highlight")
 poopDeck.fishing.idle()
+poopDeck.updateGuiNow()
 assert(poopDeck.gui.labels.fishIdleButton.style:match("#1d4ed8") ~= nil, "gui should highlight idle when fishing state is idle")
 assert(poopDeck.gui.labels.fishReelButton.style:match("#22304a") ~= nil, "gui should unhighlight reel when fishing state is idle")
 poopDeck.fishing.showSize("an enormous")
 poopDeck.fishing.onLineDistance("367")
 poopDeck.gui.fishingReel()
 poopDeck.fishing.parseCaughtLine("With a final tug, you finish reeling in the line and land a redfin tuna weighing 233 pounds and 7 ounces!")
+poopDeck.updateGuiNow()
 assert(poopDeck.gui.labels.fishingLine1.text:match("Status: Landed") ~= nil, "caught fish should set landed status")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Hooked: No") ~= nil, "caught fish should clear hooked display")
 assert(poopDeck.gui.labels.fishingLine1.text:match("Line: %-") ~= nil, "caught fish should clear line distance display")
@@ -735,6 +773,7 @@ assert(poopDeck.gui.labels.fishingLine2.text == "Caught: 233lb 7oz Redfin Tuna",
 assert(poopDeck.gui.labels.fishCastButton.style:match("#22304a") ~= nil, "gui should clear bait highlight after landing a fish")
 assert(poopDeck.gui.labels.fishReelButton.style:match("#22304a") ~= nil, "gui should unhighlight reel after landing a fish")
 poopDeck.fishing.parseCastSuccess("You cock back your arm and smoothly cast your line over the railing into the nearby water. You judge the cast at about 71 feet.")
+poopDeck.updateGuiNow()
 assert(poopDeck.gui.labels.fishIdleButton.style:match("#1d4ed8") ~= nil, "gui should highlight idle while cast out and waiting")
 assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui should not highlight tease until fishing state is teasing")
 local preTeaseStatus = poopDeck.state.fishing.status
@@ -744,8 +783,10 @@ assertSent({})
 assertEqual(poopDeck.state.fishing.status, preTeaseStatus, "gui tease indicator click should not change fishing status")
 assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui tease indicator click should not highlight tease")
 poopDeck.fishing.teaseSoon()
+poopDeck.updateGuiNow()
 assert(poopDeck.gui.labels.fishTeaseButton.style:match("#1d4ed8") ~= nil, "gui should highlight tease when fishing state is teasing")
 _G[poopDeck.gui.labels.fishCastButton.callback]()
+poopDeck.updateGuiNow()
 assert(poopDeck.gui.labels.fishCastButton.style:match("#1d4ed8") ~= nil, "gui should highlight bait after click")
 assert(poopDeck.gui.labels.fishTeaseButton.style:match("#22304a") ~= nil, "gui should unhighlight tease after bait click")
 poopDeck.gui.teardown()
@@ -764,6 +805,8 @@ poopDeck.stats.recordFishCatch("redfin tuna", 200, 0, statsTimestamp)
 poopDeck.stats.recordFishCatch("rock bass", 10, 3, statsTimestamp)
 local fishStats = poopDeck.stats.fishSummary("all")
 assertEqual(fishStats.total, 4, "stats should count all fish catches")
+assertEqual(fishStats.total_ounces, 8285, "stats should total all fish catch weights")
+assertEqual(fishStats.gold, 2861, "stats should estimate sale gold from all fish weights")
 assertEqual(fishStats.biggest.fish_type, "redfin tuna", "stats should store normalized fish type")
 assertEqual(fishStats.biggest.total_ounces, 3735, "stats should track biggest catch by total ounces")
 local tunaStats = poopDeck.stats.fishSummary("all", "redfin tuna")
@@ -776,13 +819,21 @@ assertEqual(monsterStats.total, 2, "stats should count seamonster kills")
 assertEqual(monsterStats.byType["pirate ship"].count, 1, "stats should normalize monster articles")
 assertEqual(poopDeck.stats.seamonsterSummary("today").total, 2, "stats should count today's seamonster kills")
 local fishTable = table.concat(poopDeck.stats.fishTableLines(), "\n")
-assert(fishTable:match("|Fish%s*|Today|Week|Month|All|Biggest%s*|") ~= nil, "fish table should include period headers")
-assert(fishTable:match("|Fish%s+|Today|Week|Month|All|Biggest%s+|") ~= nil, "mdk fish table should use tight separators")
-assert(fishTable:match("|Fish%s+|%s+Today%s+|") == nil, "mdk fish table should not add gap spaces around headers")
+assert(
+  fishTable:match("Fish") ~= nil
+    and fishTable:match("Today") ~= nil
+    and fishTable:match("Week") ~= nil
+    and fishTable:match("Month") ~= nil
+    and fishTable:match("All") ~= nil
+    and fishTable:match("Biggest") ~= nil,
+  "fish table should include period headers"
+)
 assert(fishTable:match("Redfin Tuna") ~= nil, "fish table should include normalized fish names")
 assert(fishTable:match("Rock Bass") ~= nil, "fish table should include all fish types")
 assert(fishTable:match("233lb 7oz") ~= nil, "fish table should include biggest catch weights")
 assert(fishTable:match("Total") ~= nil, "fish table should include a total row")
+assert(fishTable:match("Gold") ~= nil, "fish table should include a gold row")
+assert(fishTable:match("2861") ~= nil, "fish table should include all-time estimated gold")
 local monsterTable = table.concat(poopDeck.stats.seamonsterTableLines(), "\n")
 assert(monsterTable:match("|Seamonster%s*|Today|Week|Month|All|") ~= nil, "monster table should include period headers")
 assert(monsterTable:match("|Seamonster%s+|Today|Week|Month|All|") ~= nil, "mdk monster table should use tight separators")

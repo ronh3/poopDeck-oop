@@ -136,11 +136,33 @@ local function framedLine(text, color)
   return true
 end
 
+local function configuredOutputMode()
+  if poopDeck.config and type(poopDeck.config.get) == "function" then
+    local value = tostring(poopDeck.config.get("outputMode") or ""):lower()
+    if value == "compact" then
+      return "compact"
+    end
+  end
+  return "framed"
+end
+
+local function compactLine(text, color)
+  local message = "    >>> [poopDeck] " .. tostring(text) .. " <<<"
+  if cecho then
+    cecho("\n" .. colorTag(color) .. message .. resetTag() .. "\n\n")
+  else
+    echo("\n" .. message .. "\n\n")
+  end
+  return true
+end
+
 function output.line(text, color)
   local colorName = color or output.colors.info
   output.remember(text, colorName)
   local message = "[poopDeck] " .. tostring(text)
-  if framedLine(text, colorName) then
+  if configuredOutputMode() == "compact" then
+    compactLine(text, colorName)
+  elseif framedLine(text, colorName) then
     -- Already emitted as a complete frame above.
   elseif cecho then
     cecho("\n" .. colorTag(colorName) .. message .. resetTag() .. "\n\n")
@@ -179,6 +201,25 @@ end
 
 function output.shot(text)
   output.line(text, output.colors.warn)
+end
+
+function output.setMode(mode)
+  local value = tostring(mode or ""):lower()
+  if value == "box" or value == "frame" then
+    value = "framed"
+  end
+  if value ~= "compact" and value ~= "framed" then
+    output.bad("Use: poopgui output compact|framed")
+    return false
+  end
+  if poopDeck.config and type(poopDeck.config.set) == "function" then
+    poopDeck.config.set("outputMode", value)
+    if type(poopDeck.config.save) == "function" then
+      poopDeck.config.save()
+    end
+  end
+  output.good("Output mode set to " .. value)
+  return true
 end
 
 function output.status(title, rows)

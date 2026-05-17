@@ -43,7 +43,7 @@ help.sections = {
       "poopstats db - database status",
       "poopstats reset confirm - delete all recorded stats",
       "poopstats today|week|month|all - period overview",
-      "poopstats fish [today|week|month|all] [type] - fish catches and biggest catches",
+      "poopstats fish [today|week|month|all] [type] - fish catches, biggest catches, and gold",
       "poopstats monsters [today|week|month|all] - seamonster kills"
     }
   },
@@ -63,7 +63,9 @@ help.sections = {
     rows = {
       "poopgui - show GUI position and size",
       "poopgui on|off - enable or disable the GUI window",
+      "poopgui compact|full - switch GUI layout mode",
       "poopgui theme adb|runewarden|default - set GUI theme source",
+      "poopgui output compact|framed - set one-line output style",
       "poopgui restore on|off - use Mudlet's saved UserWindow layout",
       "poopgui pos <x> <y> - set spawn position",
       "poopgui size <width> <height> - set spawn size",

@@ -1,6 +1,6 @@
 poopDeck = poopDeck or {}
 
-poopDeck.version = "1.0.16"
+poopDeck.version = "1.0.19"
 poopDeck.packageName = "poopDeck"
 
 poopDeck.state = poopDeck.state or {}
@@ -19,7 +19,7 @@ poopDeck.gui = poopDeck.gui or {}
 
 function poopDeck.safeSend(command)
   if command and command ~= "" then
-    send(command)
+    send(command, false)
   end
 end
 
@@ -36,9 +36,27 @@ function poopDeck.boolText(value)
   return value and "yes" or "no"
 end
 
-function poopDeck.refreshGui()
+function poopDeck.updateGuiNow()
+  poopDeck.state.guiRefreshPending = false
   if poopDeck.gui and type(poopDeck.gui.update) == "function" then
     pcall(poopDeck.gui.update)
+  end
+end
+
+function poopDeck.refreshGui(immediate)
+  if immediate == true or type(tempTimer) ~= "function" then
+    poopDeck.updateGuiNow()
+    return
+  end
+  if poopDeck.state.guiRefreshPending then
+    return
+  end
+  poopDeck.state.guiRefreshPending = true
+  local ok, timerId = pcall(tempTimer, 0.05, function()
+    poopDeck.updateGuiNow()
+  end)
+  if not ok or not timerId then
+    poopDeck.updateGuiNow()
   end
 end
 

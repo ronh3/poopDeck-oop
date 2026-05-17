@@ -156,6 +156,12 @@ Recommended restart order:
 
 Each slice should leave the package buildable and the command/help/docs synchronized.
 
+## Roadmap
+
+- Expand maintain behavior beyond a static command prefix. Future maintain work should decide how `maintainTarget` interacts with combat firing, sailing maintenance aliases, and urgent ship conditions such as dead sails, damaged hull, fires, leaks, and tangled rigging.
+- Add context-aware emergency controls to the GUI for common live sailing responses, such as clear rigging, rainstorm, douse sails, maintain sails, and maintain hull.
+- Explore richer turn and crew-readiness state, including parsing turn progress/completion and crew-ready lines into GUI status instead of relying on scrollback.
+
 ## Validation Checklist
 Host-side checks:
 

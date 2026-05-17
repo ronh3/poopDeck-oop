@@ -53,9 +53,13 @@ Source files live under `src/`; generated `build/` output should not be edited.
 | `poopgui` | Shows GUI settings such as position, size, restore-layout mode, and theme source. |
 | `poopgui on` | Enables the GUI window. |
 | `poopgui off` | Disables and hides the GUI window until re-enabled. |
+| `poopgui compact` | Uses a small status-button-focused GUI layout. |
+| `poopgui full` | Restores the full dashboard GUI layout. |
 | `poopgui theme adb` | Uses the active agnosticDB theme when agnosticDB is installed. |
 | `poopgui theme runewarden` | Uses poopDeck's built-in Runewarden-style theme. |
 | `poopgui theme default` | Uses poopDeck's neutral built-in theme. |
+| `poopgui output compact` | Uses a distinct single-line style for poopDeck event output. |
+| `poopgui output framed` | Restores framed poopDeck event output. |
 | `poopgui restore on` | Lets Mudlet restore the saved UserWindow position and size. |
 | `poopgui restore off` | Uses poopDeck's configured spawn position and size instead of Mudlet's saved layout. |
 | `poopgui pos <x> <y>` | Sets the GUI spawn position, for example `poopgui pos 80 80`. |
@@ -175,7 +179,7 @@ The GUI includes buttons for common fishing actions:
 | `poopstats week` | Shows a compact overview for this week. |
 | `poopstats month` | Shows a compact overview for this month. |
 | `poopstats all` | Shows a compact all-time overview. |
-| `poopstats fish` | Shows fish catch totals and biggest catches. |
+| `poopstats fish` | Shows fish catch totals, biggest catches, and estimated sale gold. |
 | `poopstats fish <period>` | Shows fish stats for `today`, `week`, `month`, or `all`. |
 | `poopstats fish <period> <type>` | Shows fish stats for one fish type. |
 | `poopstats monsters` | Shows seamonster kill totals by type. |

@@ -165,6 +165,11 @@ function gui.isEnabled()
   return configValue("guiEnabled", true) == true
 end
 
+local function guiMode()
+  local mode = tostring(configValue("guiMode", "full")):lower()
+  return mode == "compact" and "compact" or "full"
+end
+
 local function cssColor(value, fallback)
   local text = trim(value)
   text = text:gsub("^<", ""):gsub(">$", ""):gsub("^ansi_", ""):gsub("^ansi", "")
@@ -441,6 +446,66 @@ local function combatStatus()
   return "Idle"
 end
 
+local function riggingIsClear(value)
+  local text = trim(value):lower():gsub("%p+$", "")
+  return text == "" or text == "-" or text == "clear" or text == "cleared" or text == "none"
+end
+
+local function raiseDangerLevel(current, candidate)
+  local rank = {accent = 1, reduced = 2, bad = 3}
+  if (rank[candidate] or 1) > (rank[current] or 1) then
+    return candidate
+  end
+  return current
+end
+
+local function healthDanger(value, warningAt, badAt)
+  local number = tonumber(value)
+  if not number then
+    return "accent"
+  end
+  if number <= badAt then
+    return "bad"
+  end
+  if number <= warningAt then
+    return "reduced"
+  end
+  return "accent"
+end
+
+local function dangerSummary(ship, combat)
+  ship = ship or {}
+  combat = combat or {}
+
+  local level = "accent"
+  level = raiseDangerLevel(level, healthDanger(ship.sailHealth, 50, 20))
+  level = raiseDangerLevel(level, healthDanger(ship.hullHealth, 75, 50))
+
+  if ship.hasFires == true or ship.isLeaking == true then
+    level = "bad"
+  end
+  if not riggingIsClear(ship.riggings) then
+    level = "bad"
+  end
+  if combat.outOfRange then
+    level = "bad"
+  end
+
+  local parts = {
+    "Sails " .. healthText(ship.sailHealth),
+    "Hull " .. healthText(ship.hullHealth),
+    "Fires " .. boolText(ship.hasFires),
+    "Rigging " .. titleValue(ship.riggings),
+    "Range " .. (combat.outOfRange and "Out" or "Ok"),
+    "Combat " .. combatStatus()
+  }
+  if ship.isLeaking == true then
+    table.insert(parts, 4, "Leak Yes")
+  end
+
+  return table.concat(parts, " | "), level
+end
+
 local function autoText(mode)
   return mode == "automatic" and "On" or "Off"
 end
@@ -540,11 +605,18 @@ end
 function setLabel(key, text, colorKind)
   local label = gui.labels[key]
   if label then
-    label.text = text
+    local value = tostring(text or "")
+    local kind = colorKind or "text"
+    if label._poopDeckText == value and label._poopDeckColorKind == kind then
+      return
+    end
+    label._poopDeckText = value
+    label._poopDeckColorKind = kind
+    label.text = value
     if label.cecho then
-      label:cecho(themeTag(colorKind or "text") .. tostring(text) .. resetTag())
+      label:cecho(themeTag(kind) .. value .. resetTag())
     else
-      label:echo(text)
+      label:echo(value)
     end
   end
 end
@@ -552,7 +624,12 @@ end
 local function setLabelStyle(key, style)
   local label = gui.labels[key]
   if label then
-    label:setStyleSheet(style or baseStyle)
+    local value = style or baseStyle
+    if label._poopDeckStyle == value then
+      return
+    end
+    label._poopDeckStyle = value
+    label:setStyleSheet(value)
   end
 end
 
@@ -598,17 +675,60 @@ local function normalizeSize(value)
 end
 
 local function windowSpec()
+  local compact = guiMode() == "compact"
   return {
     name = gui.windowName,
     titleText = "poopDeck " .. tostring(poopDeck.version or ""),
     x = configValue("guiX", "80px"),
     y = configValue("guiY", "80px"),
-    width = configValue("guiWidth", "720px"),
-    height = configValue("guiHeight", "360px"),
-    restoreLayout = configValue("guiRestoreLayout", true) == true,
+    width = compact and configValue("guiCompactWidth", "520px") or configValue("guiWidth", "720px"),
+    height = compact and configValue("guiCompactHeight", "100px") or configValue("guiHeight", "360px"),
+    restoreLayout = (not compact) and configValue("guiRestoreLayout", true) == true,
     dockPosition = "floating",
     autoDock = false
   }
+end
+
+local function buildFullLayout()
+  createLabel("header", {x = 0, y = 0, width = "100%", height = "28px"}, gui.root, sectionStyle)
+
+  createLabel("shipTitle", {x = 0, y = 32, width = "100%", height = "24px"}, gui.root, sectionStyle)
+  createLabel("shipLine1", {x = 0, y = 58, width = "68%", height = "23px"}, gui.root)
+  createLabel("shipSea", {x = "68%", y = 58, width = "32%", height = "23px"}, gui.root)
+  createLabel("shipLine2", {x = 0, y = 82, width = "100%", height = "23px"}, gui.root)
+  createLabel("shipLine3", {x = 0, y = 106, width = "100%", height = "23px"}, gui.root)
+
+  createLabel("combatTitle", {x = 0, y = 134, width = "100%", height = "24px"}, gui.root, sectionStyle)
+  createLabel("combatLine1", {x = 0, y = 160, width = "100%", height = "23px"}, gui.root)
+  createLabel("combatLine2", {x = 0, y = 184, width = "100%", height = "23px"}, gui.root)
+  createButton("autoButton", {x = "2%", y = 210, width = "16%", height = "25px"}, gui.root, "Auto", "poopDeck.gui.toggleAutoFire")
+  createButton("firingButton", {x = "20%", y = 210, width = "16%", height = "25px"}, gui.root, "Firing", "poopDeck.gui.noop")
+  createButton("ballistaButton", {x = "38%", y = 210, width = "18%", height = "25px"}, gui.root, "Ballista", "poopDeck.gui.setWeaponBallista")
+  createButton("onagerButton", {x = "58%", y = 210, width = "18%", height = "25px"}, gui.root, "Onager", "poopDeck.gui.setWeaponOnager")
+  createButton("throwerButton", {x = "78%", y = 210, width = "20%", height = "25px"}, gui.root, "Thrower", "poopDeck.gui.setWeaponThrower")
+
+  createLabel("fishingTitle", {x = 0, y = 242, width = "100%", height = "24px"}, gui.root, sectionStyle)
+  createLabel("fishingLine1", {x = 0, y = 268, width = "100%", height = "23px"}, gui.root)
+  createLabel("fishingLine2", {x = 0, y = 292, width = "100%", height = "23px"}, gui.root)
+  createButton("fishCastButton", {x = "2%", y = 318, width = "17%", height = "25px"}, gui.root, "Bait", "poopDeck.gui.fishingCastAgain")
+  createButton("fishMediumButton", {x = "21%", y = 318, width = "17%", height = "25px"}, gui.root, "Cast", "poopDeck.gui.fishingCastMedium")
+  createButton("fishIdleButton", {x = "40%", y = 318, width = "17%", height = "25px"}, gui.root, "Idle", "poopDeck.gui.noop")
+  createButton("fishTeaseButton", {x = "59%", y = 318, width = "17%", height = "25px"}, gui.root, "Tease", "poopDeck.gui.noop")
+  createButton("fishReelButton", {x = "78%", y = 318, width = "20%", height = "25px"}, gui.root, "Reel", "poopDeck.gui.fishingReel")
+end
+
+local function buildCompactLayout()
+  createLabel("header", {x = 0, y = 0, width = "100%", height = "25px"}, gui.root, sectionStyle)
+  createButton("autoButton", {x = "2%", y = 32, width = "17%", height = "25px"}, gui.root, "Auto", "poopDeck.gui.toggleAutoFire")
+  createButton("firingButton", {x = "21%", y = 32, width = "17%", height = "25px"}, gui.root, "Firing", "poopDeck.gui.noop")
+  createButton("ballistaButton", {x = "40%", y = 32, width = "18%", height = "25px"}, gui.root, "Ballista", "poopDeck.gui.setWeaponBallista")
+  createButton("onagerButton", {x = "60%", y = 32, width = "18%", height = "25px"}, gui.root, "Onager", "poopDeck.gui.setWeaponOnager")
+  createButton("throwerButton", {x = "80%", y = 32, width = "18%", height = "25px"}, gui.root, "Thrower", "poopDeck.gui.setWeaponThrower")
+  createButton("fishCastButton", {x = "2%", y = 65, width = "17%", height = "25px"}, gui.root, "Bait", "poopDeck.gui.fishingCastAgain")
+  createButton("fishMediumButton", {x = "21%", y = 65, width = "17%", height = "25px"}, gui.root, "Cast", "poopDeck.gui.fishingCastMedium")
+  createButton("fishIdleButton", {x = "40%", y = 65, width = "17%", height = "25px"}, gui.root, "Idle", "poopDeck.gui.noop")
+  createButton("fishTeaseButton", {x = "59%", y = 65, width = "17%", height = "25px"}, gui.root, "Tease", "poopDeck.gui.noop")
+  createButton("fishReelButton", {x = "78%", y = 65, width = "20%", height = "25px"}, gui.root, "Reel", "poopDeck.gui.fishingReel")
 end
 
 function gui.teardown()
@@ -656,31 +776,11 @@ function gui.build()
   end
 
   createLabel("backdrop", {x = 0, y = 0, width = "100%", height = "100%"}, gui.root, gui.styles.backdrop)
-  createLabel("header", {x = 0, y = 0, width = "100%", height = "28px"}, gui.root, sectionStyle)
-
-  createLabel("shipTitle", {x = 0, y = 32, width = "100%", height = "24px"}, gui.root, sectionStyle)
-  createLabel("shipLine1", {x = 0, y = 58, width = "68%", height = "23px"}, gui.root)
-  createLabel("shipSea", {x = "68%", y = 58, width = "32%", height = "23px"}, gui.root)
-  createLabel("shipLine2", {x = 0, y = 82, width = "100%", height = "23px"}, gui.root)
-  createLabel("shipLine3", {x = 0, y = 106, width = "100%", height = "23px"}, gui.root)
-
-  createLabel("combatTitle", {x = 0, y = 134, width = "100%", height = "24px"}, gui.root, sectionStyle)
-  createLabel("combatLine1", {x = 0, y = 160, width = "100%", height = "23px"}, gui.root)
-  createLabel("combatLine2", {x = 0, y = 184, width = "100%", height = "23px"}, gui.root)
-  createButton("autoButton", {x = "2%", y = 210, width = "16%", height = "25px"}, gui.root, "Auto", "poopDeck.gui.toggleAutoFire")
-  createButton("firingButton", {x = "20%", y = 210, width = "16%", height = "25px"}, gui.root, "Firing", "poopDeck.gui.noop")
-  createButton("ballistaButton", {x = "38%", y = 210, width = "18%", height = "25px"}, gui.root, "Ballista", "poopDeck.gui.setWeaponBallista")
-  createButton("onagerButton", {x = "58%", y = 210, width = "18%", height = "25px"}, gui.root, "Onager", "poopDeck.gui.setWeaponOnager")
-  createButton("throwerButton", {x = "78%", y = 210, width = "20%", height = "25px"}, gui.root, "Thrower", "poopDeck.gui.setWeaponThrower")
-
-  createLabel("fishingTitle", {x = 0, y = 242, width = "100%", height = "24px"}, gui.root, sectionStyle)
-  createLabel("fishingLine1", {x = 0, y = 268, width = "100%", height = "23px"}, gui.root)
-  createLabel("fishingLine2", {x = 0, y = 292, width = "100%", height = "23px"}, gui.root)
-  createButton("fishCastButton", {x = "2%", y = 318, width = "17%", height = "25px"}, gui.root, "Bait", "poopDeck.gui.fishingCastAgain")
-  createButton("fishMediumButton", {x = "21%", y = 318, width = "17%", height = "25px"}, gui.root, "Cast", "poopDeck.gui.fishingCastMedium")
-  createButton("fishIdleButton", {x = "40%", y = 318, width = "17%", height = "25px"}, gui.root, "Idle", "poopDeck.gui.noop")
-  createButton("fishTeaseButton", {x = "59%", y = 318, width = "17%", height = "25px"}, gui.root, "Tease", "poopDeck.gui.noop")
-  createButton("fishReelButton", {x = "78%", y = 318, width = "20%", height = "25px"}, gui.root, "Reel", "poopDeck.gui.fishingReel")
+  if guiMode() == "compact" then
+    buildCompactLayout()
+  else
+    buildFullLayout()
+  end
 
   gui.update()
   if (poopDeck.state.ship or {}).isAboard then
@@ -703,12 +803,8 @@ function gui.update()
   local onagerStrategy = combat.onagerStrategy or (poopDeck.config and poopDeck.config.get and poopDeck.config.get("onagerStrategy")) or "alternate"
   local mode = combat.mode or "manual"
 
-  setLabel("header", string.format(
-    "Auto: %s | Weapon: %s | Status: %s",
-    autoText(mode),
-    titleValue(weapon),
-    combatStatus()
-  ), "accent")
+  local headerText, headerColor = dangerSummary(ship, combat)
+  setLabel("header", headerText, headerColor)
 
   setLabel("shipTitle", string.format(
     "Ship: %s%s%s",
@@ -921,17 +1017,37 @@ function gui.showSettings()
   local theme = currentTheme()
   poopDeck.output.status("poopDeck GUI", {
     "Enabled: " .. tostring(gui.isEnabled()),
+    "Mode: " .. guiMode(),
     "Restore layout: " .. tostring(spec.restoreLayout),
     "Theme: " .. tostring(configValue("guiTheme", "agnosticdb")) .. " (" .. tostring(theme.label or theme.name) .. ")",
+    "Output mode: " .. tostring(configValue("outputMode", "framed")),
     "Position: " .. tostring(spec.x) .. ", " .. tostring(spec.y),
     "Size: " .. tostring(spec.width) .. " x " .. tostring(spec.height),
     "poopgui on|off - enable or disable the GUI window",
+    "poopgui compact|full - switch GUI layout mode",
     "poopgui theme adb|runewarden|default - set GUI theme source",
+    "poopgui output compact|framed - set poopDeck one-line output style",
     "poopgui restore on|off - use Mudlet's saved window layout",
     "poopgui pos <x> <y> - set spawn position",
     "poopgui size <width> <height> - set spawn size",
     "poopgui reset - restore default position and size"
   })
+end
+
+function gui.setMode(mode)
+  local value = tostring(mode or ""):lower()
+  if value == "normal" or value == "dashboard" then
+    value = "full"
+  end
+  if value ~= "compact" and value ~= "full" then
+    poopDeck.output.bad("Use: poopgui compact|full")
+    return false
+  end
+  poopDeck.config.set("guiMode", value)
+  poopDeck.config.save()
+  gui.rebuild()
+  poopDeck.output.good("GUI mode set to " .. value)
+  return true
 end
 
 function gui.setEnabled(enabled)
@@ -975,11 +1091,16 @@ function gui.setSize(width, height)
     return false
   end
   poopDeck.config.set("guiRestoreLayout", false)
-  poopDeck.config.set("guiWidth", normalizedWidth)
-  poopDeck.config.set("guiHeight", normalizedHeight)
+  if guiMode() == "compact" then
+    poopDeck.config.set("guiCompactWidth", normalizedWidth)
+    poopDeck.config.set("guiCompactHeight", normalizedHeight)
+  else
+    poopDeck.config.set("guiWidth", normalizedWidth)
+    poopDeck.config.set("guiHeight", normalizedHeight)
+  end
   poopDeck.config.save()
   gui.rebuild()
-  poopDeck.output.good("GUI size set to " .. normalizedWidth .. " x " .. normalizedHeight)
+  poopDeck.output.good("GUI " .. guiMode() .. " size set to " .. normalizedWidth .. " x " .. normalizedHeight)
   return true
 end
 
@@ -988,6 +1109,8 @@ function gui.resetSettings()
   poopDeck.config.set("guiY", "80px")
   poopDeck.config.set("guiWidth", "720px")
   poopDeck.config.set("guiHeight", "360px")
+  poopDeck.config.set("guiCompactWidth", "520px")
+  poopDeck.config.set("guiCompactHeight", "100px")
   poopDeck.config.set("guiRestoreLayout", true)
   poopDeck.config.save()
   gui.rebuild()
@@ -1017,6 +1140,13 @@ function gui.setTheme(theme)
   return true
 end
 
+function gui.setOutputMode(mode)
+  if poopDeck.output and type(poopDeck.output.setMode) == "function" then
+    return poopDeck.output.setMode(mode)
+  end
+  return false
+end
+
 function gui.command(args)
   local input = trim(args)
   if input == "" then
@@ -1035,6 +1165,25 @@ function gui.command(args)
 
   if command == "off" or command == "hide" or command == "disable" or command == "disabled" then
     gui.setEnabled(false)
+    return
+  end
+
+  if command == "compact" or command == "mini" then
+    gui.setMode("compact")
+    return
+  end
+
+  if command == "full" or command == "normal" or command == "dashboard" then
+    gui.setMode("full")
+    return
+  end
+
+  if command == "mode" or command == "layout" then
+    if rest == "" then
+      gui.showSettings()
+    else
+      gui.setMode(rest)
+    end
     return
   end
 
@@ -1067,6 +1216,15 @@ function gui.command(args)
       gui.showSettings()
     else
       gui.setTheme(rest)
+    end
+    return
+  end
+
+  if command == "output" or command == "outputs" then
+    if rest == "" then
+      gui.showSettings()
+    else
+      gui.setOutputMode(rest)
     end
     return
   end

@@ -14,9 +14,13 @@ config.defaults = {
   guiY = "80px",
   guiWidth = "720px",
   guiHeight = "360px",
+  guiCompactWidth = "520px",
+  guiCompactHeight = "100px",
   guiRestoreLayout = true,
   guiEnabled = true,
+  guiMode = "full",
   guiTheme = "agnosticdb",
+  outputMode = "framed",
   baitCommand = "get bass from tank",
   castDistance = "medium"
 }

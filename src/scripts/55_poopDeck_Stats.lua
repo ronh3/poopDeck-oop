@@ -246,6 +246,18 @@ local function compareBiggest(left, right)
   return (tonumber(left.total_ounces) or 0) > (tonumber(right.total_ounces) or 0)
 end
 
+local function recordOunces(record)
+  local total = tonumber(record and record.total_ounces)
+  if total then
+    return total
+  end
+  return (tonumber(record and record.pounds) or 0) * 16 + (tonumber(record and record.ounces) or 0)
+end
+
+function stats.goldForOunces(totalOunces)
+  return math.floor((tonumber(totalOunces) or 0) * 221 / 640 + 0.5)
+end
+
 local function periodLabel(period)
   local labels = {
     today = "Today",
@@ -488,6 +500,7 @@ function stats.fishSummary(period, fishType)
   local records = stats.recordsFor(stats.fetchFishCatches(), period or "all")
   local summary = {
     total = 0,
+    total_ounces = 0,
     biggest = nil,
     byType = {}
   }
@@ -495,6 +508,7 @@ function stats.fishSummary(period, fishType)
   for _, record in ipairs(records) do
     if not typeFilter or record.fish_type == typeFilter then
       summary.total = summary.total + 1
+      summary.total_ounces = summary.total_ounces + recordOunces(record)
       if not summary.biggest or compareBiggest(record, summary.biggest) then
         summary.biggest = record
       end
@@ -511,6 +525,7 @@ function stats.fishSummary(period, fishType)
     end
   end
 
+  summary.gold = stats.goldForOunces(summary.total_ounces)
   return summary
 end
 
@@ -606,6 +621,14 @@ function stats.fishTableLines(title)
       summaries.month.total,
       summaries.all.total,
       stats.formatWeight(summaries.all.biggest, true)
+    }
+    rows[#rows + 1] = {
+      "Gold",
+      summaries.today.gold,
+      summaries.week.gold,
+      summaries.month.gold,
+      summaries.all.gold,
+      "-"
     }
   end
 
